@@ -1,0 +1,27 @@
+node_modules/
+dist/
+build/
+.next/
+out/
+
+# secrets — never commit
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# runtime
+.cache/
+coverage/
+*.log
+npm-debug.log*
+
+# local audit receipts may contain wallet addresses
+data/receipts/
+.snapshots/
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

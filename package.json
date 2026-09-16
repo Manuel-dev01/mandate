@@ -1,0 +1,21 @@
+{
+  "name": "mandate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The autonomous treasurer that is provably incapable of breaking its mandate.",
+  "workspaces": [
+    "packages/agent",
+    "packages/web"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "smoke": "node scripts/smoke.mjs",
+    "dev:agent": "npm run dev --workspace=agent",
+    "dev:web": "npm run dev --workspace=web",
+    "test": "npm run test --workspace=agent",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
