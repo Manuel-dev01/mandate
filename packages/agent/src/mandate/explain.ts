@@ -14,7 +14,7 @@
  */
 
 import { ServError, serv, type ServClient } from '../serv/client.js'
-import type { Decision } from './types.js'
+import type { Decision, ExplanationTrace } from './types.js'
 
 export interface ExplainOptions {
   client?: ServClient
@@ -56,6 +56,21 @@ export async function explain(decision: Decision, opts: ExplainOptions = {}): Pr
     ),
   ].join('\n')
 
+  const tools = [
+    ...((opts.guard ?? Boolean(userMessage)) ? [{ kind: 'prompt_guard' as const }] : []),
+    { kind: 'shadow_agent' as const, hint: HINT, maxIterations: 2 },
+  ]
+  const toolNames = tools.map((t) => (t.kind === 'prompt_guard' ? 'serv_prompt_guard' : 'serv_shadow_agent'))
+  const trace = (partial: Partial<ExplanationTrace>): ExplanationTrace => ({
+    attempted: true,
+    model: null,
+    tokens: 0,
+    tools: toolNames,
+    guarded: false,
+    note: null,
+    ...partial,
+  })
+
   try {
     // The decision goes in the USER turn on purpose — see the guard gotcha above.
     const result = await client.chat({
@@ -68,16 +83,29 @@ export async function explain(decision: Decision, opts: ExplainOptions = {}): Pr
       ...(opts.model ? { model: opts.model } : {}),
       maxCompletionTokens: 400,
       temperature: 0,
-      tools: [
-        ...((opts.guard ?? Boolean(userMessage)) ? [{ kind: 'prompt_guard' as const }] : []),
-        { kind: 'shadow_agent' as const, hint: HINT, maxIterations: 2 },
-      ],
+      tools,
     })
 
-    if (result.kind === 'guarded' || result.text.length === 0) return decision
-    return Object.freeze({ ...decision, rationale: result.text, rationaleSource: 'serv' })
+    if (result.kind === 'guarded') {
+      return Object.freeze({
+        ...decision,
+        explanation: trace({ model: result.model, tokens: result.usage.totalTokens, guarded: true, note: 'serv_prompt_guard short-circuited the turn; template rationale kept' }),
+      })
+    }
+    if (result.text.length === 0) {
+      return Object.freeze({ ...decision, explanation: trace({ model: result.model, tokens: result.usage.totalTokens, note: 'empty completion; template rationale kept' }) })
+    }
+    return Object.freeze({
+      ...decision,
+      rationale: result.text,
+      rationaleSource: 'serv',
+      explanation: trace({ model: result.model, tokens: result.usage.totalTokens }),
+    })
   } catch (err) {
     if (err instanceof ServError && (err.isAuthError || err.isCreditsError)) throw err
-    return decision
+    return Object.freeze({
+      ...decision,
+      explanation: trace({ note: `SERV failed: ${err instanceof Error ? err.message : String(err)}; template rationale kept` }),
+    })
   }
 }

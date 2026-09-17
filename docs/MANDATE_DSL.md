@@ -117,7 +117,7 @@ Principle 4 made concrete. When English implies one of the numeric types without
 | vague single-chain warning — "don't put everything on one chain" | `max_chain_concentration` | `maxPct: 50` |
 | general caution — "preserve capital first", "be conservative", "safety first" | `max_single_action_size` | `maxPct: 25` (a blast-radius limit) |
 
-The last row is what turns the demo mandate's *"Preserve capital first."* into its seventh rule.
+The last row is what turns the demo mandate's *"Preserve capital first."* into its seventh rule — and it is **enforced in code** (`CAUTION_RE` in `compile.ts`), not merely prompted: measured 16 Sep, the model skipped it about one run in four, and a rule that appears on three demo runs out of four is not a rule. A stated single-action number always wins over the default.
 
 What the model does **not** get to decide, because code does it after the fact:
 
@@ -152,7 +152,9 @@ evaluate(ruleSet, portfolioState, vaultState, proposedAction): {
 
 The implemented shape is `evaluate(ruleSet, portfolio, facts, action) → Decision`, where `Decision` carries the contract above plus `checks[]` (every rule, pass or fail, DSL order), `inputs` (serialized), and `hash` — sha256 over everything except the timestamp and the prose, so two runs on the same inputs hash identically even when SERV's wording differs. `evaluate()` is pure and synchronous; `facts.ts` does the I/O beforehand and `explain.ts` calls SERV afterwards.
 
-**Rule 1 is share of portfolio.** `numbers.vaultShareAfter` additionally reports the share of the *vault's* TVL we would own (the demo's 88.80%) as context; it never decides.
+**Rule 1 is share of portfolio.** `numbers.vaultShareAfter` additionally reports what share of the *vault's* TVL this deposit alone would be — `amount ÷ (TVL + amount)`, the demo's 88.80% — as context; it never decides, and it deliberately ignores existing positions so a declared portfolio cannot distort it.
+
+**Settlement kinds the executor knows:** `sync` (approve + deposit, immediate), `queued` (one request, the vault's queue finalizes — IXHYB-BSC redeems this way), `async-erc7540` (request → poll on-chain views → claim). The mandate always reasons in the portfolio asset; a redeem is converted to shares on-chain at plan time.
 
 **Applicability.** Rules 1, 2, 3, 6 and 7 apply to deposits only — a redeem reduces exposure, adds liquidity, and leaving a chain or a vault needs no clearance. Rules 4 and 5 apply to both kinds. A non-applicable rule is recorded as such and counts as passed.
 

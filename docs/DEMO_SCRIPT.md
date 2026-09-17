@@ -20,15 +20,17 @@ It compiles live into seven typed rules, each showing the phrase it came from.
 
 ---
 
-## Beat 2 — It allocates (0:30–1:00)
+## Beat 2 — It allows (0:30–1:00)
 
-> *"Deposit 5,000 USDC into the Avalanche vault."*
+> *"Deposit 5,000 USDC into the BSC vault."*
 
-Agent checks whitelist, reads live vault state, runs all seven predicates, returns **ALLOW**, builds unsigned steps via the IXS MCP, signs, broadcasts on Avalanche Fuji. Shows the ERC-7540 **request → claim** lifecycle completing.
+Agent reads **live** vault state via IXS (TVL, status, on-chain `paused()`), runs the **live** whitelist check, runs all seven predicates against the declared portfolio, returns **ALLOW** — every check green with its actual-vs-limit — and issues the **receipt**: mandate hash, decision hash, receipt hash, chained to the previous one.
 
-**Scores:** user-readiness (it genuinely works, on a real chain, against real licensed-vault infrastructure).
+*(Nothing is signed or broadcast. IXS confirmed on 17 Sep that no vault — testnet or mainnet — accepts outside deposits during the build window (RECON §6.10), so the product is the decision and its proof. The portfolio is the declared seed, labelled `declared` on the receipt: idle 65,000 USDC + IXHYB-BSC 20,000 + IXHYB-Arc 15,000 = 100,000.)*
 
-> **Say:** "Real vault, real chain, real ERC-7540 settlement. The agent planned it; my signer approved it. Mandate never held the funds."
+**Scores:** user-readiness (live data in, a verifiable artifact out, first try) — and it sets up the contrast for beat 3.
+
+> **Say:** "Compliant, so it's allowed — and here's the receipt proving every rule was checked against live vault data. IXS vaults aren't open to outside wallets during the hackathon, so nothing is broadcast; what a treasury actually needs from this layer is the decision and the proof."
 
 ---
 
@@ -45,7 +47,7 @@ Agent checks whitelist, reads live vault state, runs all seven predicates, retur
 
 …and shows the context line: **"you would own 88.80% of this vault's TVL."**
 
-*(Seeded portfolio, pinned in `evaluate.unit.test.ts` — D10 must seed exactly this: idle 65,000 USDC + IXHYB-BSC 20,000 + IXHYB-Arc 15,000 = 100,000. 88.80% is the live figure: the Fuji vault holds 6,304.47 USDC, so 50,000 ÷ 56,304.47. Re-check on D11, since the balance moves. Rule 1 refuses on share of portfolio — the DSL reading; vault-TVL share is context, not the rule.)*
+*(Same declared portfolio as beat 2, pinned in `evaluate.unit.test.ts`. The numbers above are the Fuji fixture; on the BSC vault the same 50,000 breaches **four** rules (chain concentration too, since the book already holds 20,000 there) and the TVL-share line reads 81.47%. Either is fine on stage — the point is exact numbers. Rule 1 refuses on share of portfolio — the DSL reading; vault-TVL share is context, not the rule.)*
 
 Exact numbers, exact clauses, quoting the user's own words back. All seven predicates are listed, pass or fail.
 
@@ -63,15 +65,15 @@ Then push harder:
 
 ## Beat 4 — It proves it (1:45–2:15)
 
-Cut to the web console. Open the refusal receipt:
+Cut to the web console. Open the refusal receipt (`npm run receipt -- show <id>` until D7):
 
-- Inputs, portfolio state, live vault state
+- Inputs, portfolio state (labelled `declared`), live vault state
 - All seven predicates with pass/fail and actual-vs-limit
 - Which clause of the user's English produced each rule
-- `serv_shadow_agent` validation pass
-- Content hash + mandate version
+- The SERV explanation with its trace: model, tokens, `serv_prompt_guard + serv_shadow_agent`
+- Three hashes: mandate, decision, receipt — and the previous receipt it chains to
 
-Re-run it: **identical verdict, identical hash.**
+Re-run it (`npm run receipt -- replay <id>`): **identical verdict, identical hash.** The evaluator is pure and the receipt stores its exact inputs, so anyone can reproduce the decision.
 
 **Scores:** user-readiness (it looks finished), revenue potential (this artifact is the product).
 
@@ -81,7 +83,7 @@ Re-run it: **identical verdict, identical hash.**
 
 ## Beat 5 — It earns (2:15–2:40)
 
-Click **Export audit report** → **x402 paywall** → pay 0.50 USDC → report delivered.
+Click **Export audit report** → **x402 paywall** → pay 0.50 USDC → report delivered (`renderReport()` — byte-stable Markdown with every rule, every number, the explanation and the three hashes; `npm run receipt -- export <id>` until D9).
 
 **Scores:** revenue potential, live and literal.
 
@@ -104,7 +106,7 @@ Close on the agent's **ERC-8004 identity** on 8004scan.io.
 ## Rehearsal standard (D11–D13)
 
 - Three consecutive clean runs, cold start, fresh browser profile.
-- Every number on screen is live, not seeded — **except** the pre-funded balances, which are set up beforehand.
+- Every number on screen is live — vault state, whitelist, TVL — **except** the portfolio, which is the declared seed and is labelled `declared` on every receipt. Never call it live.
 - **Record the video first, demo live second.** The recording is the submission; a live run is a bonus.
 - Kill every notification, tab, and bookmark bar before recording.
 
@@ -113,6 +115,5 @@ Close on the agent's **ERC-8004 identity** on 8004scan.io.
 | If | Then |
 |---|---|
 | IXS dev host wobbles | Cached snapshot renders with a staleness badge — never an error screen |
-| Testnet faucet dry | Pre-funded wallets prepared on D10, balances verified D11 |
+| IXS REST is down on a cold start | Nothing is cached yet — D10 ships a disk snapshot of the vault universe so `listVaults()` degrades with a staleness badge even on first launch |
 | SERV rate-limits | Pre-warmed prompt cache; `rationale` falls back to a deterministic template |
-| A tx won't confirm | Pre-recorded segment for beat 2, cut in without breaking narration |

@@ -189,7 +189,12 @@ function normalizeVault(v: VaultBase, rpcUrl: string | null): Vault {
  * reports `sync` and builds a plain ERC-4626 approve+deposit. Both are modelled
  * so swapping the target vault mid-demo cannot break the type.
  */
-export const SettlementSchema = z.enum(['sync', 'async-erc7540'])
+/**
+ * Three kinds, not two (RECON §6.10): IXHYB-BSC deposits `sync` but its redeem
+ * build comes back `queued` — one requestRedeem, no claim step, the queue
+ * finalizes off-chain. `queued` runs like sync and is complete once sent.
+ */
+export const SettlementSchema = z.enum(['sync', 'async-erc7540', 'queued'])
 export type SettlementKind = z.infer<typeof SettlementSchema>
 
 export const KNOWN_STEP_TYPES = [

@@ -208,7 +208,80 @@ The guard treats system-prompt content echoed into the reply as leakage. Moving 
 
 `@openserv-labs/sdk@2.4.1` peers on `openai@^5`; the scaffold's `openai@^4` failed `npm install` with ERESOLVE. Bumped to `^5` (resolves 5.23.x). npm 11.6.2 also died once mid-install with `Exit handler never called!` while reporting exit 0 — if `node_modules/openai` is missing after an install, run it again.
 
-**viem is not loadable as installed (16 Sep).** The network-interrupted installs left root `@scure/bip32@1.7.0` with an empty nested `@noble/curves` directory and root `@noble/curves@1.2.0` — `import 'viem'` fails with `ERR_MODULE_NOT_FOUND … @noble/curves/abstract/modular`. D3's single `paused()` read uses a raw `eth_call` instead (`mandate/facts.ts`). **D4 needs a clean `npm ci` on a stable connection before the signer can import viem.**
+**viem was not loadable after the interrupted installs (16 Sep):** root `@scure/bip32@1.7.0` had an empty nested `@noble/curves` directory and root `@noble/curves@1.2.0` — `import 'viem'` failed with `ERR_MODULE_NOT_FOUND … @noble/curves/abstract/modular`. D3's `paused()` read uses a raw `eth_call` (`mandate/facts.ts`) and stays that way. **Resolved for D4 by `npm ci --fetch-retries=6` on a quiet connection: 652 packages in 5 min, `import('viem')` → 440 exports.** If it breaks again, `npm ci` is the fix, not `npm install`.
+
+### 6.9 D4 pre-flight — 16 Sep 2026
+
+Blockers re-probed; none moved.
+
+```
+vault_build_request_deposit  1 USDC, probe wallet
+  FUJI  ERR  Deposit amount exceeds the current vault limit of 0 USDC.
+  BSC   OK   settlement=sync  steps=erc20_approve_exact+vault_deposit
+  ARC   ERR  Deposit amount exceeds the current vault limit of 0 USDC.
+  WL    ERR  Deposit amount exceeds the current vault limit of 0 USDC.
+  RH    ERR  Deposit amount exceeds the current vault limit of 0 USDG.
+vault_request_status         ERR  Type `DepositRequest` has no field `owner`
+vaults_list                  total: 1
+```
+
+IXHYB-BSC on chain 97, vault `0xCb09a5326AEFD705d14FF4C5ca2beD7086ba0Dcc`:
+
+| Call | Result |
+|---|---|
+| `maxDeposit(any)` | `2^256-1` — unlimited |
+| `paused()` | false |
+| `asset()` | `0xbBCa80a7116aE46B0f249D279EF43f86274dc4f4` (test USDC, 6dp) |
+| `decimals()` | 18 (shares) |
+| `convertToAssets(1e18)` | `0x10979d` = 1.087389 USDC — matches `pricePerShare` |
+
+**The test USDC cannot be self-served.** Its bytecode carries `mint(address,uint256)` (`0x40c10f19`) and `owner()`; no `faucet()`/`drip()`. Simulating `mint(W, 1e6)` from an arbitrary address:
+
+```
+eth_call -> execution reverted 0x118cdaa7 000…1111   # OwnableUnauthorizedAccount(address)
+owner()  -> 0xe8ea6365c329130fd47d4d1ca0ae59caf49fa9c4
+```
+
+The IXS skills repo README documents no faucet, contact, or whitelist process. Funding is a request to IXS in the hackathon Telegram.
+
+**Burner** (key in `.env`, never printed): `0x5b92F8A2…` at first probe, rotated on 17 Sep to `0xBCA6f82e240C6AC36B23b4f7D21adF17e03966Fe` (0.3 tBNB from the faucet, 0 test USDC). tBNB from the BNB Chain testnet faucet (`bnbchain.org/en/testnet-faucet`; Chainlink and QuickNode run alternatives). Address derived with `node:crypto` secp256k1 + `@noble/hashes` keccak because `viem` was not loadable (§6.8).
+
+### 6.10 D4 execution — 17 Sep 2026: the fork, the third settlement kind, and the real contacts
+
+**No self-serve test USDC exists.** The token's bytecode carries only `mint(address,uint256)` + `owner()` + `transferOwnership` (no `faucet`, `drip`, `claim`, `requestTokens`); the IXS REST/MCP API has no faucet or onboarding route; the skills repo's `local-sandbox-wallet-quickstart.md` is key hygiene only; and the skills repo README has no contact. Arc's vault uses native USDC (`0x3600…0000`, Circle faucet exists) but Arc's cap is 0 like Fuji's. Every depositable path goes through IXS.
+
+**The workaround that works: a local Anvil fork of BSC testnet with the token owner impersonated.**
+
+```
+anvil --fork-url https://bsc-testnet-rpc.publicnode.com --port 8546 --chain-id 97
+anvil_impersonateAccount 0xe8ea…9c4  ->  mint(burner, 100000e6)  ->  status 1
+burner on fork: 100000.000000 USDC · 0.300000 tBNB (real) · vault TVL 11373.029684 USDC (real)
+
+act deposit 5000 --portfolio onchain   (FORK_RPC_URL set, EXECUTION_MODE=live)
+  approve  success 0xa817f548…   deposit  success 0xe5fd8efe…
+  shares 4598.170479929445672155 · convertToAssets = 4999.999999 USDC · TVL 16373.029684
+act redeem 1000 --portfolio onchain
+  IXS build -> settlement "queued", one vault_request_redeem step
+  request  success 0x2da45c51…   shares 4598.17 -> 3678.54 (919.63 queued; USDC arrives when the operator processes the queue)
+```
+
+Every contract, every byte of IXS-built calldata, every settlement rule is the real one; only the RPC is local. `npm run fork --workspace=agent` does the above in one command. `FORK_RPC_URL` redirects only `FORK_CHAIN_ID` (97) and every receipt is labelled `bsc-testnet (fork)`, so a fork run can never pass for the real chain.
+
+**A THIRD settlement kind: `queued`.** IXHYB-BSC deposits `sync` (approve + deposit, settles immediately) but its **redeem** build returns `settlement: "queued"` — one `requestRedeem`, *"Shares are queued for redemption, not settled — this vault has no separate claim step (the queue finalizes off this call)."* `SettlementSchema` is now `sync | async-erc7540 | queued`; the runner treats `queued` as complete once sent. The mandate reasons in **assets**; `vault_build_request_redeem` wants **shares** — `planAction` converts via on-chain `convertToShares` and records both.
+
+**IXS's answer, 17 Sep (Telegram):** *"we don't have a vault accessible on testnet."* Consistent with every probe: Fuji/Arc/`t_ix7540v1` cap at 0 and the test USDC is owner-mint-only **by design**, not by accident. **Robinhood Chain mainnet is the same**: `maxDeposit(any)` = 0, `paused()` false, TVL 2.2 USDG, whitelist not enforced, `vault_build_request_deposit` → `limit of 0 USDG`. **No IXS vault accepts outside deposits during the build window.** Follow-up asked whether any vault will open; until then the fork is the primary execution path and is presented as such.
+
+**Contacts (the RECON link was wrong).** `t.me/openserv.ai` is not a Telegram username. Verified from `openserv.ai/hackathon` and `ixs.finance`:
+
+| Who | Where |
+|---|---|
+| OpenServ hackathon TG | `https://t.me/openservai` |
+| IXS Telegram | `https://t.me/ixsfinance` |
+| IXS Discord | `https://discord.gg/XXHzsJGYkq` |
+| IXS X | `@IxsFinance` |
+| IXS skills repo issues | `github.com/IXS-Finance/ixs-rwa-agent-skills/issues` (enabled, 0 open) |
+
+**Hackathon page, verified 17 Sep:** *"Submissions close September 28th 00:00 UTC"* — i.e. end of 27 Sep UTC, which settles the 27/28 question in CLAUDE.md's favour. Submission = a public X post (name, concept, images, links, tag `@openservai`) **and** the typeform `https://form.typeform.com/to/GyPxGqRn`. Participants must **enable data collection at `console.openserv.ai/settings/organization`**. Winners announced early October.
 
 ---
 
@@ -218,7 +291,8 @@ The guard treats system-prompt content echoed into the reply as leakage. Moving 
 |---|---|
 | Hackathon brief | `https://www.openserv.ai/hackathon` (403s to scripted fetch; use a browser UA) |
 | Pre-registration | `https://form.typeform.com/to/GyPxGqRn` |
-| Telegram | `https://t.me/openserv.ai` |
+| Telegram (OpenServ) | `https://t.me/openservai` — **not** `openserv.ai`, that username does not exist |
+| Telegram / Discord (IXS) | `https://t.me/ixsfinance` · `https://discord.gg/XXHzsJGYkq` · X `@IxsFinance` · GitHub issues on `IXS-Finance/ixs-rwa-agent-skills` |
 | SERV docs index | `https://docs.openserv.ai/llms.txt` — every page is fetchable as `.md` |
 | OpenServ skills | `https://github.com/openserv-labs/skills` |
 | IXS skills (stale env) | `https://github.com/IXS-Finance/ixs-rwa-agent-skills` |

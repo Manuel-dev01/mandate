@@ -29,6 +29,15 @@ const KEYS = [
   'IXS_API_BASE_URL',
   'IXS_MCP_URL',
   'IXS_VAULT_ID',
+  'IXS_WRITE_VAULT_ID',
+  'AGENT_PRIVATE_KEY',
+  'EXECUTION_MODE',
+  'BLOCKED_WRITE_CHAIN_IDS',
+  'MAX_ACTION_ASSET_AMOUNT',
+  'PORTFOLIO_DECLARED_PATH',
+  'FORK_RPC_URL',
+  'FORK_CHAIN_ID',
+  'RECEIPTS_DIR',
 ] as const
 
 /**
@@ -55,6 +64,33 @@ const EnvSchema = z.object({
   IXS_API_BASE_URL: z.string().url().default('https://api-dev-v2.ixs.finance'),
   IXS_MCP_URL: z.string().url().optional(),
   IXS_VAULT_ID: z.string().min(1).default('6a952683732c2b84b55ce89b'),
+  /** The only vault that builds a deposit today (RECON §6.9): IXHYB-BSC, sync. */
+  IXS_WRITE_VAULT_ID: z.string().min(1).default('6a278b40a7d16b245d665479'),
+  /** Read ONLY by signer/index.ts. Never logged. */
+  AGENT_PRIVATE_KEY: z
+    .string()
+    .regex(/^(0x)?[0-9a-fA-F]{64}$/, 'AGENT_PRIVATE_KEY must be a 32-byte hex key')
+    .transform((k) => (k.startsWith('0x') ? k : `0x${k}`) as `0x${string}`)
+    .optional(),
+  /** dry-run simulates via eth_call and never broadcasts. The safe default. */
+  EXECUTION_MODE: z.enum(['dry-run', 'live']).default('dry-run'),
+  /** Chain ids the signer refuses before touching a transport. Keep 4663 here. */
+  BLOCKED_WRITE_CHAIN_IDS: z
+    .string()
+    .default('4663,8453,1')
+    .transform((s) => Object.freeze(s.split(',').map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0))),
+  /** Hard ceiling on any single action, in asset units, regardless of mandate. */
+  MAX_ACTION_ASSET_AMOUNT: z.string().regex(/^\d+(\.\d{1,6})?$/).default('10000'),
+  PORTFOLIO_DECLARED_PATH: z.string().min(1).optional(),
+  /**
+   * Local Anvil fork (docs/RECON.md §6.10). When set, every read and write for
+   * FORK_CHAIN_ID goes to this RPC instead of the vault's own, and the chain is
+   * labelled "(fork)" in every receipt. Never set this in a demo you call live.
+   */
+  FORK_RPC_URL: z.string().url().optional(),
+  FORK_CHAIN_ID: z.coerce.number().int().positive().default(97),
+  /** Where receipts are written. Gitignored: they carry wallet addresses. */
+  RECEIPTS_DIR: z.string().min(1).optional(),
 })
 
 const parsed = EnvSchema.parse(present())
@@ -63,6 +99,8 @@ export const env = Object.freeze({
   ...parsed,
   /** Defaults off the API base so overriding one host moves both. */
   IXS_MCP_URL: parsed.IXS_MCP_URL ?? `${parsed.IXS_API_BASE_URL}/mcp`,
+  PORTFOLIO_DECLARED_PATH: parsed.PORTFOLIO_DECLARED_PATH ?? join(REPO_ROOT, 'packages', 'agent', 'portfolio.declared.json'),
+  RECEIPTS_DIR: parsed.RECEIPTS_DIR ?? join(REPO_ROOT, 'data', 'receipts'),
 })
 
 export type Env = typeof env

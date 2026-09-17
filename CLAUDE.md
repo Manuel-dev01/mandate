@@ -4,7 +4,7 @@
 
 **Mandate** is an autonomous treasury agent that is *provably incapable of breaking its mandate*.
 
-A user writes a treasury policy in plain English. Mandate compiles it into a bounded, machine-checkable rule set, then allocates capital into **IXS licensed RWA yield vaults** across multiple chains — and emits an **audit-grade decision receipt for every action it takes and every action it refuses**.
+A user writes a treasury policy in plain English. Mandate compiles it into a bounded, machine-checkable rule set, checks every proposed move into **IXS licensed RWA yield vaults** across multiple chains against it using live vault data — and emits an **audit-grade decision receipt for every action it allows and every action it refuses**.
 
 Built for **SERV Hackathon Edition 01** (14–27 Sep 2026). Tracks: **RWA Vaults (IXS)** + **Mainnet & MCP (Robinhood Chain)**.
 
@@ -14,7 +14,7 @@ Built for **SERV Hackathon Edition 01** (14–27 Sep 2026). Tracks: **RWA Vaults
 
 ## Non-negotiable context
 
-**Deadline: 27 September 2026.** The hackathon page contradicts itself (hero says 27, FAQ says 28). Build to 27. Feature freeze is D11.
+**Deadline: 27 September 2026.** Verified 17 Sep: the page says *"Submissions close September 28th 00:00 UTC"* — the end of 27 Sep. Build to 27. Feature freeze is D11. **Submission = a public X post tagging `@openservai` + the typeform `form.typeform.com/to/GyPxGqRn`, and data collection must be enabled at `console.openserv.ai/settings/organization`** (RECON §6.10).
 
 **Judged on exactly three things** — nothing else scores:
 1. **Creativity** — a novel primitive, not a novel stack.
@@ -67,6 +67,13 @@ Build async-first. Do not write a sync happy path and bolt async on afterwards.
 
 - **`vault_request_status` is broken upstream.** Every call errors with a subgraph query bug (`` Type `DepositRequest` has no field `owner` ``). The poll step needs another source: on-chain `pendingDepositRequest` / `claimableDepositRequest` via viem, or the Goldsky subgraph directly.
 - **Fuji cannot build a deposit.** On-chain `maxDeposit()` is **0 for every address** (a global operator cap; not paused, not KYC), so `vault_build_request_deposit` always fails. Arc and `t_ix7540v1` are the same. **BSC is currently the only vault that builds a deposit** — and it is sync. Beat 2 needs IXS to raise the cap, or a target change.
+
+### The product surface is DECIDE + PROVE. Execution is dormant code. (17 Sep — RECON §6.10)
+
+- **IXS, 17 Sep: "we don't have a vault accessible on testnet."** Mainnet is capped at 0 as well (`maxDeposit(any)` = 0 on Robinhood too). **No IXS vault accepts outside deposits during the build window.** The user's decision: build only on what IXS actually gives access to — live vault state, the live whitelist check, MCP-built plans — and do not build around what does not exist. **No fork in the demo, no sign-and-hold story, no simulation theatre.**
+- What ships: compile → live facts → evaluate → explain → **receipt**. Beat 2 is the ALLOW case with its receipt; beat 3 the refusal; beat 4 the replay. `bin/act.ts` ends at the receipt.
+- `signer/` and `execute/` are **dormant D4 code**: tested, kept, unreferenced by the demo path, CLI defaults, receipts or docs. `bin/fork.ts` is an internal test harness only. Do not resurface any of it on stage.
+- Facts still worth knowing: IXHYB-BSC is `sync` for deposits and **`queued`** for redeems (a third settlement kind); redeems are built in shares; the BSC test USDC (`0xbBCa80a7…`) is owner-mint-only with no faucet; the burner is `0xBCA6f82e240C6AC36B23b4f7D21adF17e03966Fe` (address only — the key is never printed, logged or committed). Hackathon Telegram: `t.me/openservai`. IXS: `t.me/ixsfinance`, `discord.gg/XXHzsJGYkq`.
 
 ### IXS MCP — live, unauthenticated, build-only
 
@@ -139,6 +146,19 @@ packages/agent/src/
 packages/web/   Next.js audit console (the hero surface)
 scripts/        smoke.mjs — zero-dependency integration verification
 ```
+
+### Build status (16 Sep)
+
+| Module | Files | State |
+|---|---|---|
+| `serv/` | `client.ts` — chat, SERV Tools, structured outputs, `{ kind: 'guarded' }` | D1 ✅ |
+| `ixs/` | `mcp.ts` (8 tools, triage), `rest.ts`, `schemas.ts` (money, Zod), `index.ts` (cached reads), `errors.ts` | D1 ✅ |
+| `mandate/` | `schema.ts`, `compile.ts` (D2) · `types.ts`, `evaluate.ts`, `explain.ts`, `facts.ts` (D3) | D2 ✅ D3 ✅ |
+| `audit/` | `receipt.ts` (build/hash/verify/replay), `store.ts` (append-only, hash-linked files), `report.ts` (byte-stable audit report) | D5 ✅ |
+| `signer/`, `execute/` | one signing module with guardrails; plan → run → status | D4 — **dormant**, not on the product surface |
+| `packages/web/` | console | D7–D8 |
+
+Tests: `*.unit.test.ts` never touch the network; `*.integration.test.ts` hit live IXS/SERV/RPC and cost a few `gpt-5.4-mini` calls. Rehearsal: `npm run act -- deposit 5000` (ALLOW → receipt), `npm run act -- deposit 50000 --message "…"` (REFUSE → receipt), `npm run receipt -- list|show|verify|replay|export`.
 
 **The compliance evaluator is the product.** Everything else is plumbing around it. Its contract:
 

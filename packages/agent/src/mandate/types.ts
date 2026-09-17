@@ -18,6 +18,13 @@ export interface PortfolioPosition {
   readonly value: bigint
 }
 
+/**
+ * Where the numbers came from. `declared` is a seed file for rehearsal or an
+ * unfunded wallet; it is serialized into every decision and therefore into the
+ * hash, so a declared portfolio can never masquerade as a live one.
+ */
+export type PortfolioSource = 'onchain' | 'declared'
+
 export interface PortfolioState {
   readonly wallet: string
   readonly asset: { readonly symbol: string; readonly decimals: number }
@@ -25,6 +32,7 @@ export interface PortfolioState {
   readonly idle: bigint
   readonly positions: readonly PortfolioPosition[]
   readonly asOf: string
+  readonly source: PortfolioSource
 }
 
 /**
@@ -38,7 +46,7 @@ export interface VaultFacts {
   readonly chainId: number
   readonly network: string
   readonly status: string | null
-  readonly settlement: 'sync' | 'async-erc7540'
+  readonly settlement: 'sync' | 'async-erc7540' | 'queued'
   readonly requiresWhitelist: boolean
   readonly asset: { readonly symbol: string; readonly decimals: number }
   /** Vault TVL in the vault asset's base units — for the ownership-share figure. */
@@ -87,6 +95,21 @@ export interface RuleCheck {
 
 export type RationaleSource = 'template' | 'serv'
 
+/**
+ * What SERV was asked and what it answered, for the receipt. Unhashed, like
+ * the rationale itself: prose and its provenance never move the verdict.
+ */
+export interface ExplanationTrace {
+  readonly attempted: boolean
+  readonly model: string | null
+  readonly tokens: number
+  /** SERV Tools attached, e.g. ['serv_prompt_guard', 'serv_shadow_agent']. */
+  readonly tools: readonly string[]
+  /** True when serv_prompt_guard short-circuited the turn. */
+  readonly guarded: boolean
+  readonly note: string | null
+}
+
 /** Serialized inputs — bigints as strings — so the decision is plain JSON. */
 export interface DecisionInputs {
   readonly portfolio: SerializedPortfolio
@@ -106,6 +129,8 @@ export interface Decision {
   /** Always present. The template until `explain()` upgrades it. */
   readonly rationale: string
   readonly rationaleSource: RationaleSource
+  /** Null until explain() runs. Excluded from the hash. */
+  readonly explanation: ExplanationTrace | null
   readonly inputs: DecisionInputs
   readonly evaluatedAt: string
   /** sha256 over everything except evaluatedAt, rationale, rationaleSource. */
@@ -123,6 +148,7 @@ export const SerializedPortfolioSchema = z.object({
   idle: BigIntString,
   positions: z.array(z.object({ vaultId: z.string(), chainId: z.number().int(), value: BigIntString })),
   asOf: z.string(),
+  source: z.enum(['onchain', 'declared']),
 })
 export type SerializedPortfolio = z.infer<typeof SerializedPortfolioSchema>
 
@@ -132,7 +158,7 @@ export const SerializedFactsSchema = z.object({
   chainId: z.number().int(),
   network: z.string(),
   status: z.string().nullable(),
-  settlement: z.enum(['sync', 'async-erc7540']),
+  settlement: z.enum(['sync', 'async-erc7540', 'queued']),
   requiresWhitelist: z.boolean(),
   asset: AssetRef,
   totalAssets: BigIntString,
@@ -159,6 +185,7 @@ export function serializePortfolio(p: PortfolioState): SerializedPortfolio {
     idle: p.idle.toString(),
     positions: p.positions.map((x) => ({ vaultId: x.vaultId, chainId: x.chainId, value: x.value.toString() })),
     asOf: p.asOf,
+    source: p.source,
   }
 }
 
@@ -178,6 +205,7 @@ export function deserializePortfolio(s: SerializedPortfolio): PortfolioState {
     idle: BigInt(p.idle),
     positions: p.positions.map((x) => ({ vaultId: x.vaultId, chainId: x.chainId, value: BigInt(x.value) })),
     asOf: p.asOf,
+    source: p.source,
   }
 }
 

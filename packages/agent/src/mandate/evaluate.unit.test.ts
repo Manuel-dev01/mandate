@@ -65,6 +65,7 @@ const DEMO_PORTFOLIO: PortfolioState = {
     { vaultId: ARC, chainId: 5042002, value: usdc(15_000) },
   ],
   asOf: '2026-09-16T00:00:00.000Z',
+  source: 'declared',
 }
 
 function portfolio(over: Partial<PortfolioState>): PortfolioState {

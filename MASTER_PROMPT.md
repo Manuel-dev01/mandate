@@ -2,9 +2,11 @@
 
 Paste **Prompt 1** into a fresh Claude Code session in this folder to begin D1. Later prompts follow the same shape. The standing guardrails block at the bottom gets appended to any prompt that writes OpenServ platform code.
 
+**Status (17 Sep):** Prompts 1–5 are done. Prompt 4's execution path is built but **shelved** — IXS: "we don't have a vault accessible on testnet"; the product surface is decide + prove. Next is **Prompt 6** (Telegram).
+
 ---
 
-## Prompt 1 — D1: build the two clients, prove the loop
+## Prompt 1 — D1: build the two clients, prove the loop ✅ done
 
 **Current state (13 Sep, end of D0):** scaffold complete, `node scripts/smoke.mjs` is **11/11 green**, `SERV_API_KEY` works and has credits. Both integration risks are retired. Nothing in `packages/agent/src/` is implemented yet.
 
@@ -63,7 +65,7 @@ tell me — that is a blocker, not something to work around.
 
 ---
 
-## Prompt 2 — D2: the mandate DSL
+## Prompt 2 — D2: the mandate DSL ✅ done
 
 ```
 Read CLAUDE.md and docs/MANDATE_DSL.md.
@@ -86,7 +88,7 @@ interpretation rather than silently dropping a rule.
 
 ---
 
-## Prompt 3 — D3: the compliance evaluator (core IP)
+## Prompt 3 — D3: the compliance evaluator (core IP) ✅ done
 
 ```
 Read CLAUDE.md, docs/MANDATE_DSL.md and docs/DEMO_SCRIPT.md.
@@ -113,6 +115,74 @@ seven rule types, both ALLOW and REFUSE. Must include:
 
 Refusals must be bit-for-bit reproducible across runs. Run the suite 3 times and show me
 identical output.
+```
+
+---
+
+## Prompt 4 — D4: the execution path ✅ built, then shelved (RECON §6.10)
+
+```
+Read CLAUDE.md, docs/RECON.md §6 and docs/DEMO_SCRIPT.md beat 2.
+
+STATE: D1–D3 are committed. evaluate() produces a hashed Decision; nothing signs or
+broadcasts yet. Live facts, re-probed 16 Sep: only IXHYB-BSC (6a278b40a7d16b245d665479,
+sync ERC-4626) builds a deposit — Fuji/Arc/t_ix7540v1 cap at maxDeposit 0, Robinhood is
+mainnet. vault_request_status is broken upstream. The BSC test USDC has an OWNER-ONLY mint;
+the burner (AGENT_PRIVATE_KEY in .env) is funded by IXS on request, or not at all.
+
+GOAL FOR D4: an ALLOW decision becomes a transaction, for both settlement kinds, with
+signing in exactly one module. Nothing else.
+
+1. packages/agent/src/signer/index.ts — THE signing module. The only file that may
+   import privateKeyToAccount or call sendTransaction. Guardrails run before anything
+   touches a transport: refuse BLOCKED_WRITE_CHAIN_IDS (4663, 8453, 1), refuse over
+   MAX_ACTION_ASSET_AMOUNT, and EXECUTION_MODE=dry-run (the default) simulates via
+   eth_call/estimateGas and never broadcasts. Never log the key.
+
+2. packages/agent/src/execute/ — plan.ts turns a Decision into an ExecutionPlan and
+   throws unless verdict === 'ALLOW' AND verifyDecisionHash() passes: a REFUSE can never
+   reach the signer by construction. run.ts executes the plan: allowance check before
+   any approve step; sync = send in order; async-erc7540 = request -> extract requestId
+   from the receipt logs -> poll -> claim. status.ts reads ERC-7540 pending/claimable
+   views on-chain because vault_request_status is broken, trying the MCP tool first and
+   degrading typed.
+
+3. packages/agent/src/mandate/portfolio.ts — live PortfolioState from chain (asset
+   balanceOf as idle, share balanceOf x convertToAssets as positions), with a declared
+   fallback from portfolio.declared.json. PortfolioState gains `source: 'onchain' |
+   'declared'` and it lands in the decision hash. A declared portfolio is never hidden.
+
+4. Tests. Unit: signer refuses 4663 before the transport is touched; dry-run never sends;
+   planAction rejects REFUSE and tampered hashes; requestId extraction; allowance skip.
+   Live: real unsigned approve+deposit from IXS for BSC; dry-run simulation reaches the
+   chain (approve simulates, deposit reverts for the balance reason); Fuji ERC-7540 views
+   read on-chain. A live 1 USDC deposit + redeem on BSC runs ONLY when EXECUTION_MODE=live
+   and the burner holds tBNB and USDC — otherwise it skips loudly.
+
+DO NOT persist receipts (D5), wire Telegram (D6), build UI, or touch x402/ERC-8004 (D9).
+DO NOT write to chain 4663 under any circumstances. Beat 2 targets BSC; switch to Fuji
+only if IXS raises the cap (IXS_WRITE_VAULT_ID).
+
+Verify: npm ci produces a loadable viem, typecheck, unit, integration in dry-run, and
+show real output. If the burner is funded, show the BSC tx hashes.
+```
+
+---
+
+## Prompt 5 — D5: the audit trail ✅ done
+
+```
+Read CLAUDE.md and docs/DEMO_SCRIPT.md beats 4 and 5.
+
+STATE: decide + prove is the product. Nothing executes (IXS: no vault accessible).
+
+GOAL: every decision becomes a receipt — the whole rule set, the whole Decision with
+its inputs, and the honesty labels — hash-linked in an append-only store; `replay`
+re-runs the pure evaluator on the stored inputs and must reproduce the identical
+decision hash; `renderReport` produces the byte-stable audit report.
+
+Built: packages/agent/src/audit/{receipt,store,report,index}.ts, bin/receipt.ts,
+Decision.explanation (unhashed SERV trace). Verified with the two live cases.
 ```
 
 ---

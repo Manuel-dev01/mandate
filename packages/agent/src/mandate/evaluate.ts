@@ -77,7 +77,11 @@ interface Projection {
   readonly currentChain: bigint
   readonly postChain: bigint
   readonly postIdle: bigint
-  /** Share of the VAULT's TVL we would own after a deposit. Context only. */
+  /**
+   * Share of the VAULT's TVL this deposit alone would represent:
+   * amount / (TVL + amount). Context only — beat 3's 88.80%. Deliberately
+   * ignores any existing position so a declared portfolio cannot distort it.
+   */
   readonly vaultShareNum: bigint
   readonly vaultShareDen: bigint
 }
@@ -97,8 +101,8 @@ function project(portfolio: PortfolioState, facts: VaultFacts, action: ProposedA
     currentChain,
     postChain: max0(currentChain + delta),
     postIdle: max0(portfolio.idle - delta),
-    vaultShareNum: postVault,
-    vaultShareDen: max0(tvl + delta),
+    vaultShareNum: action.kind === 'deposit' ? action.amount : 0n,
+    vaultShareDen: action.kind === 'deposit' ? tvl + action.amount : tvl,
   }
 }
 
@@ -281,7 +285,7 @@ export function evaluate(ruleSet: RuleSet, portfolio: PortfolioState, facts: Vau
     postChainPct: formatPct(p.postChain, p.total),
     actionPctOfPortfolio: formatPct(action.amount, p.total),
     vaultTvl: formatMoney(facts.totalAssets, facts.asset),
-    // The beat-3 figure: how much of the vault itself we would own.
+    // The beat-3 figure: what share of the vault this deposit alone would be.
     vaultShareAfter: formatPct(p.vaultShareNum, p.vaultShareDen),
     pausedSource: facts.paused === null ? 'status-fallback' : 'onchain',
     factsStale: facts.stale ? 'true' : 'false',
@@ -301,6 +305,7 @@ export function evaluate(ruleSet: RuleSet, portfolio: PortfolioState, facts: Vau
     ...hashed,
     rationale: templateRationale(verdict, checks, citedRules),
     rationaleSource: 'template',
+    explanation: null,
     evaluatedAt: new Date().toISOString(),
     hash,
   })
@@ -318,7 +323,11 @@ export function templateRationale(verdict: Verdict, checks: readonly RuleCheck[]
   return `REFUSED. ${cited.length} of ${checks.length} rules breached. ${lines.join(' ')}`
 }
 
-/** The fields the hash commits to, for anyone re-deriving it. */
+/**
+ * The fields the hash commits to, for anyone re-deriving it. Deliberately NOT
+ * rationale, rationaleSource, explanation or evaluatedAt: prose and timing
+ * never move a verdict.
+ */
 export function decisionHashInput(d: Decision): string {
   const { verdict, ruleSetHash, ruleSetVersion, checks, citedRules, numbers, inputs } = d
   return canonicalJson({ verdict, ruleSetHash, ruleSetVersion, checks, citedRules, numbers, inputs })

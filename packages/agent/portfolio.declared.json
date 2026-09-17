@@ -1,0 +1,9 @@
+{
+  "$comment": "The demo seed (docs/DEMO_SCRIPT.md beat 3). Asset units, not base units. Used only when the burner is unfunded or PORTFOLIO_SOURCE=declared; every receipt built from it carries portfolio.source = 'declared'.",
+  "asset": { "symbol": "USDC", "decimals": 6 },
+  "idle": "65000",
+  "positions": [
+    { "vaultId": "6a278b40a7d16b245d665479", "chainId": 97, "value": "20000" },
+    { "vaultId": "6a8832299e7fddf1f49e6f6c", "chainId": 5042002, "value": "15000" }
+  ]
+}

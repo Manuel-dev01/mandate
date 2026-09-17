@@ -126,9 +126,9 @@ A plain-English investment mandate ("preserve capital; never exceed 40% in one v
 ## Execution roadmap
 
 **D0 — today, 13 Sep (setup only; write no product code — the build must be "new"):**
-- Pre-register: `https://form.typeform.com/to/GyPxGqRn`. Join TG: `https://t.me/openserv.ai`.
+- Pre-register: `https://form.typeform.com/to/GyPxGqRn`. Join TG: `https://t.me/openservai` *(not `openserv.ai` — dead username)*.
 - Create `console.openserv.ai` account → **SERV API key**. ⚠️ **Confirm in Telegram whether participants get free credits** — SERV Reasoning is a paid API and this is a hard dependency (see Risks).
-- Burner wallet; Base Sepolia ETH + test USDC. Clone `IXS-Finance/ixs-rwa-agent-skills`.
+- Burner wallet; ~~Base Sepolia ETH + test USDC~~ → BSC testnet tBNB + IXS test USDC (owner-mint-only — request from IXS; see RECON §1 and §6.9). Clone `IXS-Finance/ixs-rwa-agent-skills` *(its `.env.example` is stale — do not copy values)*.
 - Smoke-test both integrations: one `/v1/chat/completions` call, and `vault_get` against `IXS_MCP_URL`.
 - Ask in TG: exact deadline (27 vs 28), submission channel/format, multi-track eligibility.
 
@@ -160,6 +160,19 @@ A plain-English investment mandate ("preserve capital; never exceed 40% in one v
 
 **D14 (27 Sep) — submit early in the day.** Never rely on the extra day the FAQ hints at.
 
+### Roadmap status — 16 Sep 2026
+
+The roadmap above is the plan of record; this is what actually happened against it. Evidence in `docs/RECON.md` §6.
+
+| Day | Status | Amendments to the plan |
+|---|---|---|
+| D0 | ✅ | Base Sepolia is dead (RECON §1); Avalanche Fuji became the read target. Free SERV credits confirmed in practice — the key works. |
+| D1 | ✅ | Both clients + the loop test, 8/8. **REST `/vaults` is the vault source of truth**, not MCP `vaults_list` (returns 1 of 5). Tool errors are plain text under `isError`. `vault_request_status` is broken upstream. **Fuji `maxDeposit` = 0** for everyone. **IXHYB-BSC is sync**, not ERC-7540. The Telegram "vault status" reply moved to D6 with the trigger wiring. |
+| D2 | ✅ | **Seven** rule types, not six (`whitelist_required` and `allowed_networks` earned their places from live findings; `min_holding_period` was dropped). Structured outputs on SERV work with `serv_shadow_agent`. `inferred` = a threshold we supplied; the model's flag is not trusted. Exclusions (`deniedNetworks`) are complemented in code after the model inverted "stay off mainnet". |
+| D3 | ✅ | **Not built on Multipath** — it is not one of the three verified SERV Tools and nothing needed it; contradictions are handled deterministically (`stricter()`, `unmappable`). Rule 1 refuses on share of portfolio; vault-TVL share (the 88.80%) is context. `serv_prompt_guard` redacts system-prompt content echoed in replies and short-circuits clean requests ~1 in 3 — it is attached only when a user message exists, and the deterministic template is the answer of record. |
+| D4 | ✅ then shelved | Built and tested (signer with guardrails, `planAction` gated on an ALLOW with a verifying hash, three settlement kinds — BSC redeems `queued`). Then IXS replied: *"we don't have a vault accessible on testnet"*, and mainnet is capped at 0 too. **Decision: build only on what IXS gives access to.** No fork or sign-and-hold in the demo; the code stays dormant. |
+| D5 | ✅ | The receipt: whole rule set + whole decision with inputs + honesty labels, hash-linked in an append-only file store. `replay` re-runs the pure evaluator on the stored inputs → identical hash (beat 4). `renderReport` is the byte-stable audit report (beat 5). Beat 2 is now the ALLOW case with its receipt. |
+
 ---
 
 ## Risks & mitigations
@@ -178,7 +191,7 @@ A plain-English investment mandate ("preserve capital; never exceed 40% in one v
 
 - **Integration smoke tests (D1, then in CI):** a SERV call returning 200 with a shadow-agent-validated body; `vault_get` returning vault metadata; a positions read returning balances.
 - **Compliance evaluator test suite (D3 onward, the most important tests):** a fixture table of ~15 `(mandate, state, action)` cases with expected ALLOW/REFUSE. **Refusals must be deterministic** — this is the demo's centerpiece and cannot be flaky. Include an adversarial case: a user message attempting to talk the agent past its mandate, which must still refuse.
-- **End-to-end on Base Sepolia:** deposit → shares received → redeem → assets returned, asserted against on-chain balances, for **both** settlement kinds.
+- **End-to-end on BSC testnet** (sync, live) and Fuji (async, once IXS raises the cap): deposit → shares received → redeem → assets returned, asserted against on-chain balances, for **both** settlement kinds. Until the burner is funded, the same pipeline runs in dry-run simulation against the real chain.
 - **Demo rehearsal (D11–D13):** the full 6-beat script start-to-finish, three consecutive clean runs, from a cold start on a fresh browser profile.
 
 ## Open questions for Telegram (D0)

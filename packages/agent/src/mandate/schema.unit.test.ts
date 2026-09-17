@@ -211,13 +211,15 @@ test('postprocess is deterministic: same model output, same rules, DSL order', (
 
   assert.deepEqual(
     a.rules.map((r) => r.type),
-    ['max_vault_concentration', 'allowed_networks', 'whitelist_required'],
+    // max_single_action_size is the code-enforced default for "Preserve capital first."
+    ['max_vault_concentration', 'max_single_action_size', 'allowed_networks', 'whitelist_required'],
     'DSL order regardless of model order',
   )
   const conc = a.rules[0] as { maxPct: number; inferred: boolean }
   assert.equal(conc.maxPct, 40)
   assert.equal(conc.inferred, false)
-  assert.deepEqual([...(a.rules[1] as { chainIds: readonly number[] }).chainIds], [97, 43113, 5042002])
+  const nets = a.rules.find((r) => r.type === 'allowed_networks') as { chainIds: readonly number[] }
+  assert.deepEqual([...nets.chainIds], [97, 43113, 5042002])
   assert.equal(a.unmappable.length, 2)
   assert.ok(a.unmappable.includes('maximize yield'))
   assert.ok(a.unmappable.some((u) => u.startsWith('Keep 20% liquid at all times (')), 'dropped rule is explained')
@@ -228,7 +230,32 @@ test('postprocess ignores a model "inferred" flag on threshold-less types', () =
     rules: [{ type: 'allowed_networks', pct: null, absolute: null, networks: ['all-testnets'], deniedNetworks: [], sourcePhrase: 'Testnet only', inferred: true }],
     unmappable: [],
   })
-  assert.equal(rules[0]!.inferred, false, 'a chain list is an expansion, not an inferred threshold')
+  const nets = rules.find((r) => r.type === 'allowed_networks')
+  assert.equal(nets?.inferred, false, 'a chain list is an expansion, not an inferred threshold')
+})
+
+test('postprocess enforces the capital-preservation default when the model skips it', () => {
+  const none = { rules: [], unmappable: ['Preserve capital first.'] }
+  const { rules, unmappable } = postprocess(DEMO_TEXT, none)
+  assert.equal(rules.length, 1)
+  const r = rules[0] as { type: string; maxPct: number | null; inferred: boolean; sourcePhrase: string }
+  assert.equal(r.type, 'max_single_action_size')
+  assert.equal(r.maxPct, 25)
+  assert.equal(r.inferred, true)
+  assert.equal(r.sourcePhrase, 'Preserve capital first', 'anchored like the model path, so the hash is path-independent')
+  assert.deepEqual(unmappable, [], 'the clause is no longer unmappable once it is a rule')
+
+  // A stated single-action number always wins over the default.
+  const stated = postprocess('Preserve capital first. Never move more than 10% at once.', {
+    rules: [{ type: 'max_single_action_size', pct: 10, absolute: null, networks: [], deniedNetworks: [], sourcePhrase: 'Never move more than 10% at once', inferred: false }],
+    unmappable: [],
+  })
+  const s = stated.rules[0] as { maxPct: number | null; inferred: boolean }
+  assert.equal(s.maxPct, 10)
+  assert.equal(s.inferred, false)
+
+  // No caution phrase, no rule invented.
+  assert.equal(postprocess('Keep 20% liquid at all times.', { rules: [], unmappable: [] }).rules.length, 0)
 })
 
 test('postprocess flags a paraphrased sourcePhrase as inferred', () => {
@@ -236,7 +263,7 @@ test('postprocess flags a paraphrased sourcePhrase as inferred', () => {
     rules: [{ type: 'paused_vault_prohibition', pct: null, absolute: null, networks: [], deniedNetworks: [], sourcePhrase: 'avoid paused vaults', inferred: false }],
     unmappable: [],
   })
-  assert.equal(rules.length, 1)
-  assert.equal(rules[0]!.sourcePhrase, 'Never touch a paused vault.')
-  assert.equal(rules[0]!.inferred, true)
+  const paused = rules.find((r) => r.type === 'paused_vault_prohibition')
+  assert.equal(paused?.sourcePhrase, 'Never touch a paused vault.')
+  assert.equal(paused?.inferred, true)
 })

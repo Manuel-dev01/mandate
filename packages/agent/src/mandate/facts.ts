@@ -9,6 +9,7 @@
  * on-chain paused() read is attempted fresh every time.
  */
 
+import { chainOf } from '../execute/chain.js'
 import { getVaultState, mcp, type IxsMcpClient } from '../ixs/index.js'
 import type { VaultFacts } from './types.js'
 
@@ -34,7 +35,8 @@ export async function gatherFacts(input: { vaultId: string; wallet: string }, op
       // The check itself failed. Null, so whitelist_required fails closed.
       () => ({ whitelisted: null, whitelistEnabled: null }),
     ),
-    (opts.readPaused ?? readPausedOnChain)(opts.rpcUrl ?? vault.rpcUrl ?? '', vault.contractAddress as `0x${string}`),
+    // chainOf() honours FORK_RPC_URL, so a forked demo reads paused() from the fork too.
+    (opts.readPaused ?? readPausedOnChain)(opts.rpcUrl ?? (vault.rpcUrl ? chainOf(vault).rpcUrl : ''), vault.contractAddress as `0x${string}`),
   ])
 
   return Object.freeze({

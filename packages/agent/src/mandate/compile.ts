@@ -269,6 +269,28 @@ export function postprocess(
     byType.set(compiled.type, existing ? stricter(existing, compiled) : compiled)
   }
 
+  // The capital-preservation default is enforced here, not merely prompted:
+  // the model skips it about one run in four, and a rule that appears on
+  // three demo runs out of four is not a rule. Code is the authority.
+  if (!byType.has('max_single_action_size')) {
+    const clause = splitSentences(sourceText).find((s) => CAUTION_RE.test(s))
+    if (clause) {
+      const quoted = [...byType.values()].some((r) => r.sourcePhrase === clause)
+      if (!quoted) {
+        byType.set('max_single_action_size', {
+          type: 'max_single_action_size',
+          maxPct: CAUTION_DEFAULT_MAX_PCT,
+          maxAbsolute: null,
+          // Same normalisation as the model path, so the hash does not depend
+          // on which of the two supplied the rule.
+          sourcePhrase: anchorPhrase(sourceText, clause).phrase,
+          inferred: true,
+        })
+        for (const u of [...unmappable]) if (normalizeClause(u) === normalizeClause(clause)) unmappable.delete(u)
+      }
+    }
+  }
+
   // Stable order: the DSL's numbering, so hashes do not depend on model order.
   const rules = RULE_TYPES.flatMap((type) => {
     const rule = byType.get(type)
@@ -429,6 +451,14 @@ function normalize(text: string): { text: string; map: number[] } {
     map.push(i)
   }
   return { text: out, map }
+}
+
+/** The closed set of caution phrases that compile to the blast-radius default (docs/MANDATE_DSL.md). */
+export const CAUTION_RE = /\b(preserve capital|capital preservation|be conservative|be careful|safety first|play it safe)\b/i
+export const CAUTION_DEFAULT_MAX_PCT = 25
+
+function normalizeClause(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9%]+/g, ' ').trim()
 }
 
 export function splitSentences(text: string): string[] {

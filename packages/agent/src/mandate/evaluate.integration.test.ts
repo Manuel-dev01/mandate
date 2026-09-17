@@ -49,6 +49,7 @@ const PORTFOLIO: PortfolioState = {
     { vaultId: '6a8832299e7fddf1f49e6f6c', chainId: 5042002, value: usdc(15_000) },
   ],
   asOf: '2026-09-16T00:00:00.000Z',
+  source: 'declared',
 }
 
 /** Live Fuji facts pinned to the RECON TVL so the 88.80% figure is exact. */
