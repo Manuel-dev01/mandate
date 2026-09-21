@@ -40,6 +40,9 @@ export const MCP_TOOLS = [
 
 export type McpToolName = (typeof MCP_TOOLS)[number]
 
+/** Safe to retry once on a transport failure. Builds are not on this list. */
+const READ_TOOLS: ReadonlySet<McpToolName> = new Set(['vaults_list', 'vault_get', 'vault_check_whitelist', 'vault_request_status'])
+
 export interface IxsMcpOptions {
   url?: string
   timeoutMs?: number
@@ -125,7 +128,16 @@ export class IxsMcpClient {
    *   3. otherwise           -> second JSON.parse, then Zod
    */
   async call<S extends z.ZodTypeAny>(name: McpToolName, args: Record<string, unknown>, schema: S): Promise<z.output<S>> {
-    const result = (await this.rpc('tools/call', { name, arguments: args }, name)) as ToolCallResult | undefined
+    // The dev host wobbles: a read that times out once usually answers on the
+    // next try (seen 3x on vault_check_whitelist, 16–18 Sep). One retry, reads
+    // only — a build payload is never retried blindly.
+    let result: ToolCallResult | undefined
+    try {
+      result = (await this.rpc('tools/call', { name, arguments: args }, name)) as ToolCallResult | undefined
+    } catch (err) {
+      if (!(err instanceof IxsTransportError) || !READ_TOOLS.has(name)) throw err
+      result = (await this.rpc('tools/call', { name, arguments: args }, name)) as ToolCallResult | undefined
+    }
     const text = result?.content?.[0]?.text
 
     if (result?.isError) {

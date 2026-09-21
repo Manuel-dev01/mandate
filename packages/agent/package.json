@@ -12,7 +12,10 @@
     "typecheck": "tsc --noEmit",
     "act": "tsx src/bin/act.ts",
     "fork": "tsx src/bin/fork.ts",
-    "receipt": "tsx src/bin/receipt.ts"
+    "receipt": "tsx src/bin/receipt.ts",
+    "agent": "tsx src/bin/agent.ts",
+    "provision": "tsx src/bin/provision.ts",
+    "bot": "tsx src/bin/bot.ts"
   },
   "dependencies": {
     "@openserv-labs/sdk": "^2",

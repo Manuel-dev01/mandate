@@ -83,6 +83,23 @@ export function toAmount(raw: string, decimals: number): Amount {
   return Object.freeze({ raw, baseUnits: parseDecimalAmount(raw, decimals), decimals, symbol })
 }
 
+/**
+ * JSON with bigints, for disk snapshots of vault state. `123n` becomes
+ * `{ "$bigint": "123" }` and back. Never a float on either side.
+ */
+export function stringifyWithBigint(value: unknown, space?: number): string {
+  return JSON.stringify(value, (_k, v: unknown) => (typeof v === 'bigint' ? { $bigint: v.toString() } : v), space)
+}
+
+export function parseWithBigint<T = unknown>(text: string): T {
+  return JSON.parse(text, (_k, v: unknown) => {
+    if (v && typeof v === 'object' && '$bigint' in v && typeof (v as { $bigint: unknown }).$bigint === 'string') {
+      return BigInt((v as { $bigint: string }).$bigint)
+    }
+    return v
+  }) as T
+}
+
 /** The reverse direction: base units -> the integer string IXS demands. */
 export function toBaseUnitString(baseUnits: bigint): string {
   if (baseUnits <= 0n) {

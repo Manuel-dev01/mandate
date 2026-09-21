@@ -14,7 +14,7 @@
 
 export * from './schema.js'
 export * from './types.js'
-export { CompileError, compile, compileWithTrace, type CompileOptions, type CompileTrace } from './compile.js'
+export { CompileError, compile, compileCached, compileWithTrace, type CompileOptions, type CompileTrace } from './compile.js'
 export { evaluate, formatPct, pctToBps, templateRationale, verifyDecisionHash, decisionHashInput } from './evaluate.js'
 export { explain, type ExplainOptions } from './explain.js'
 export { gatherFacts, readPausedOnChain, type GatherFactsOptions } from './facts.js'

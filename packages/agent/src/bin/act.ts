@@ -10,15 +10,11 @@
  * the decision and its proof. Exit 0 = ALLOW, 2 = REFUSE, 1 = error.
  */
 
-import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { record } from '../audit/index.js'
 import { env } from '../env.js'
 import { listVaults } from '../ixs/index.js'
 import { formatBaseUnits, parseDecimalAmount } from '../ixs/schemas.js'
-import { compile, evaluate, explain, gatherFacts, loadPortfolio, RuleSetSchema, type RuleSet } from '../mandate/index.js'
+import { compileCached, evaluate, explain, gatherFacts, loadPortfolio } from '../mandate/index.js'
 import type { PortfolioSource } from '../mandate/types.js'
 import { SignerRefusal, agentAddress } from '../signer/index.js'
 
@@ -58,20 +54,6 @@ function parseArgs(argv: string[]): Args {
     portfolio,
     mandate: flag('mandate') ?? DEMO_MANDATE,
   }
-}
-
-/** One SERV call per distinct mandate text, then a file cache. Paid tokens. */
-async function compileCached(text: string): Promise<RuleSet> {
-  const dir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.cache')
-  const file = join(dir, `ruleset-${createHash('sha256').update(text).digest('hex').slice(0, 16)}.json`)
-  if (existsSync(file)) {
-    const parsed = RuleSetSchema.safeParse(JSON.parse(readFileSync(file, 'utf8')))
-    if (parsed.success) return parsed.data
-  }
-  const ruleSet = await compile(text)
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(file, JSON.stringify(ruleSet, null, 2))
-  return ruleSet
 }
 
 const line = (s = '') => console.log(s)

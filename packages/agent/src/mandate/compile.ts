@@ -12,6 +12,7 @@
  */
 
 import { z } from 'zod'
+import { env } from '../env.js'
 import { ServError, serv, type ServClient } from '../serv/client.js'
 import {
   ALL_CHAIN_IDS,
@@ -22,6 +23,7 @@ import {
   TESTNET_CHAIN_IDS,
   buildRuleSet,
   stricter,
+  RuleSetSchema,
   type CompiledRule,
   type KnownNetwork,
   type Rule,
@@ -477,4 +479,30 @@ function words(text: string): string[] {
     .split(/[^a-z0-9%]+/)
     .filter((w) => w.length > 1 && !STOP_WORDS.has(w))
     .map((w) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w))
+}
+
+// ------------------------------------------------------------- cache
+
+/**
+ * One SERV call per distinct mandate text, then a file cache keyed by the
+ * text's hash. Paid tokens; the demo pastes the same mandate every rehearsal.
+ */
+export async function compileCached(sourceText: string, opts: CompileOptions & { cacheDir?: string } = {}): Promise<RuleSet> {
+  const { createHash } = await import('node:crypto')
+  const { existsSync, mkdirSync, readFileSync, writeFileSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const dir = opts.cacheDir ?? env.COMPILE_CACHE_DIR
+  const file = join(dir, `ruleset-${createHash('sha256').update(sourceText.trim()).digest('hex').slice(0, 16)}.json`)
+  if (existsSync(file)) {
+    const parsed = RuleSetSchema.safeParse(JSON.parse(readFileSync(file, 'utf8')))
+    if (parsed.success) return parsed.data
+  }
+  const ruleSet = await compile(sourceText, opts)
+  try {
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(file, JSON.stringify(ruleSet, null, 2))
+  } catch {
+    // a cache that fails to write costs one more SERV call next time, nothing else
+  }
+  return ruleSet
 }

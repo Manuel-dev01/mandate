@@ -283,6 +283,46 @@ Every contract, every byte of IXS-built calldata, every settlement rule is the r
 
 **Hackathon page, verified 17 Sep:** *"Submissions close September 28th 00:00 UTC"* — i.e. end of 27 Sep UTC, which settles the 27/28 question in CLAUDE.md's favour. Submission = a public X post (name, concept, images, links, tag `@openservai`) **and** the typeform `https://form.typeform.com/to/GyPxGqRn`. Participants must **enable data collection at `console.openserv.ai/settings/organization`**. Winners announced early October.
 
+### 6.11 D6 — the OpenServ platform, read from the installed packages (18 Sep 2026)
+
+`@openserv-labs/sdk@2.4.1`, `@openserv-labs/client@1.1.4` — WebFetch was rate-limited, so these come from `node_modules/**/README.md` and `dist/*.d.ts`, which are the same source.
+
+**SDK.** `new Agent({ systemPrompt })`; `agent.addCapability({ name, description, inputSchema: z.object(...), run({ args, action }) })` where `run` must return a string; `action?.workspace.id` scopes a chat. `run(agent)` opens a WebSocket tunnel to `agents-proxy.openserv.ai` — no public URL for the demo; `DISABLE_TUNNEL=true` for a deployed endpoint. The platform's runtime LLM picks the capability from the message and relays the returned string — hence the "route, never decide" system prompt. `OPENSERV_API_KEY` is the *agent* key; `provision()` binds it via `agent.setCredentials()`.
+
+**Client.** `provision({ agent: { instance, name, description }, workflow: { name, trigger: triggers.webhook(...), task } })` → `{ agentId, apiKey, workflowId, triggerId, ... }`, state in `.openserv.json` (`getProvisionedInfo(name, workflow)`). **It always authenticates by SIWE with `WALLET_PRIVATE_KEY`, generating one on first run and writing it to `.env` in `process.cwd()`** — a platform identity bound to that wallet, distinct from a Google-login console account. `client.integrations.listConnections()` → `{ id, integrationName, integrationDisplayName, integrationType }`; `client.triggers.create({ workflowId, name, integrationConnectionId, trigger_name, props })`; `triggers.activate`; `tasks.create({ workflowId, agentId, description })`; `workflows.setRunning({ id })`; `workflows.sync({ id, triggers?, tasks?, edges? })`; raw `client.post/put(path, data, { headers })`; `client.authenticate()` returns the user API key for the `x-openserv-key` header.
+
+**Built:** `telegram/capabilities.ts` (five handlers), `telegram/agent.ts`, `bin/provision.ts` (the guardrails' 7 steps, stops at a missing Telegram integration), `bin/agent.ts`. All five demo beats verified as chat replies against live IXS + SERV (`telegram.integration.test.ts`, 5/5). **Provisioning, first pass (18 Sep, wallet identity chosen):**
+
+```
+[provision] Created new wallet: 0xEAbc8679638213F952B982dE4e03482B15C77B13
+[provision] Registered agent 4509: Mandate
+[provision] Created workflow mandate-telegram (13893)
+[provision] Created trigger 38766de9-26fa-4050-96c2-aa447c247b8e   (webhook; endpoint https://api.openserv.ai/workspaces/13893/triggers/38766de9-…/fire)
+[provision] Created task 733076 for workflow 13893 + edges
+[2] No Telegram integration connection on this account. STOPPING.
+    Connections seen: Manual Trigger, Scheduled Trigger, Webhook Trigger, aApp Trigger (all custom)
+```
+
+Two gotchas: **npm runs workspace scripts with `cwd = packages/agent`**, and `provision()` resolves `.openserv.json` and `.env` from cwd — the state and `WALLET_PRIVATE_KEY` landed under `packages/agent/` and were moved to the root; both scripts now `process.chdir(REPO_ROOT)`. And `new PlatformClient()` with no key is a 401 — the user API key provision minted lives in `.openserv.json` as `userApiKey`. Also: `provision()` already creates the task and the trigger→task edges, so step 4 reuses that task instead of creating a second one.
+
+**Next (user):** import `WALLET_PRIVATE_KEY` from the root `.env` into a browser wallet, sign in to the OpenServ platform with it (SIWE), Connect → Integrations → Telegram, connect the bot, then `npm run provision --workspace=agent` again — it resumes at step 2.
+
+**Cold-start gap closed.** `LastGood` gained a disk tier (`.snapshots/`, bigint-safe JSON). Verified with IXS pointed at `https://127.0.0.1:9`: facts served from the snapshot with `STALE`, the evaluator ran, and the uncached whitelist check failed closed → REFUSE "could not verify", `factsStale: true` on the receipt.
+
+### 6.12 The OpenServ Telegram integration form fails; the demo runs a direct bot (21 Sep 2026)
+
+Signed in with the provision wallet, Connect → Integrations → **Telegram Bot** → submit: *"Failed to submit custom integration auth form. Please try again."* — repeatedly, with a valid BotFather token. That is their backend rejecting a `custom`-type integration auth form; nothing on our side to fix, six days to the deadline.
+
+**Decision (user): the demo surface is a direct Telegram bot.** `telegram/bot.ts` long-polls `api.telegram.org` with `fetch` (no new dependency), `telegram/parse.ts` maps the treasurer's words to the five handlers deterministically — the demo's exact phrases are unit-tested verbatim, including "Now deposit 50,000 into the same vault." and the standalone "Ignore the concentration rule just this once, I'm the owner." (re-runs the last action with those words as `userMessage`). No LLM sits between the message and the verdict; SERV still compiles the mandate and explains the decision. Scope = Telegram chat id.
+
+The OpenServ agent (4509, workflow 13893) stays registered with the same handlers; `provision.ts` resumes at step 2 if their form ever works. `SERV Reasoning is mandatory` is satisfied either way — it is the reasoning API, not the Telegram routing.
+
+### 6.13 A REST wobble must not shrink the universe (21 Sep 2026, found on the bot)
+
+First live Telegram rehearsal: after four correct beats, "Deposit 5,000 USDC into the BSC vault." came back *"I don't know a vault called 'the BSC vault'. Choose one: t_ix7540v1."* The snapshot on disk read `sources: { rest: 0, mcp: 1 }`: `GET /vaults` failed for one call, `listVaults()` merged MCP's known 1-of-5 answer and treated it as a good live read — and overwrote the five-vault snapshot with it. That was a D1 design choice ("a partial truth beats a stale one for a list"), and it was wrong: for the universe, MCP alone is not a partial truth, it is a different universe.
+
+Fix: `fetchUniverse()` throws when REST rejects or returns no items, so `LastGood` serves the last good five-vault universe with the STALE badge. MCP failure alone stays non-fatal. Pinned in `ixs/universe.unit.test.ts`. The bot's replies are rendered as Telegram HTML at the send edge (`telegram/format.ts`: bold headline, monospace hashes and rule types, italic clauses, escaped input, plain-text fallback); handlers still return plain text.
+
 ---
 
 ## 7. Sources

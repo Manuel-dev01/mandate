@@ -86,6 +86,11 @@ export class MemoryReceiptStore implements ReceiptStore {
   get(id: string): Receipt | null {
     return this.receipts.get(id) ?? null
   }
+  /** Any unique prefix -> the full id, like the file store. */
+  resolve(prefix: string): string | null {
+    const matches = [...this.receipts.keys()].filter((id) => id.startsWith(prefix))
+    return matches.length === 1 ? (matches[0] ?? null) : null
+  }
   head(): string | null {
     return this.chain.at(-1)?.id ?? null
   }

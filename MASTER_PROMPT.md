@@ -2,7 +2,7 @@
 
 Paste **Prompt 1** into a fresh Claude Code session in this folder to begin D1. Later prompts follow the same shape. The standing guardrails block at the bottom gets appended to any prompt that writes OpenServ platform code.
 
-**Status (17 Sep):** Prompts 1–5 are done. Prompt 4's execution path is built but **shelved** — IXS: "we don't have a vault accessible on testnet"; the product surface is decide + prove. Next is **Prompt 6** (Telegram).
+**Status (18 Sep):** Prompts 1–6 are done. Prompt 4's execution path is built but **shelved** — IXS: "we don't have a vault accessible on testnet"; the product surface is decide + prove. D6 platform provisioning awaits the account decision (RECON §6.11). Next is **Prompt 7** (the web console).
 
 ---
 
@@ -183,6 +183,23 @@ decision hash; `renderReport` produces the byte-stable audit report.
 
 Built: packages/agent/src/audit/{receipt,store,report,index}.ts, bin/receipt.ts,
 Decision.explanation (unhashed SERV trace). Verified with the two live cases.
+```
+
+---
+
+## Prompt 6 — D6: the Telegram surface ✅ handlers done; platform wiring pending account decision
+
+```
+Read CLAUDE.md, docs/RECON.md §6.11 and docs/DEMO_SCRIPT.md beats 1–3.
+
+GOAL: the demo's Telegram surface on OpenServ. Five capabilities that return the
+EXACT text to relay — set_mandate, propose_action, get_receipt, vault_status, help —
+built on compile/evaluate/explain/record. The runtime LLM routes; it never decides.
+Provisioning follows the standing guardrails block literally and STOPS if the Telegram
+integration is not in the account. Also: close the cold-start gap with disk snapshots.
+
+Built: telegram/{capabilities,agent,mandates}.ts, bin/{provision,agent}.ts, LastGood
+disk tier. 12 unit + 5 live (every beat as a chat reply).
 ```
 
 ---

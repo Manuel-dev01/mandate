@@ -181,7 +181,7 @@ export type SerializedAction = z.infer<typeof SerializedActionSchema>
 export function serializePortfolio(p: PortfolioState): SerializedPortfolio {
   return {
     wallet: p.wallet,
-    asset: { ...p.asset },
+    asset: { symbol: p.asset.symbol, decimals: p.asset.decimals },
     idle: p.idle.toString(),
     positions: p.positions.map((x) => ({ vaultId: x.vaultId, chainId: x.chainId, value: x.value.toString() })),
     asOf: p.asOf,
@@ -189,8 +189,28 @@ export function serializePortfolio(p: PortfolioState): SerializedPortfolio {
   }
 }
 
+/**
+ * Explicit projection, never a spread: an extra field on the input (a wider
+ * object passed as VaultFacts) must not leak into the hashed inputs, or a
+ * replay that deserialises through the schema would never reproduce it.
+ */
 export function serializeFacts(f: VaultFacts): SerializedFacts {
-  return { ...f, asset: { ...f.asset }, totalAssets: f.totalAssets.toString() }
+  return {
+    vaultId: f.vaultId,
+    name: f.name,
+    chainId: f.chainId,
+    network: f.network,
+    status: f.status,
+    settlement: f.settlement,
+    requiresWhitelist: f.requiresWhitelist,
+    asset: { symbol: f.asset.symbol, decimals: f.asset.decimals },
+    totalAssets: f.totalAssets.toString(),
+    paused: f.paused,
+    whitelisted: f.whitelisted,
+    whitelistEnabled: f.whitelistEnabled,
+    observedAt: f.observedAt,
+    stale: f.stale,
+  }
 }
 
 export function serializeAction(a: ProposedAction): SerializedAction {

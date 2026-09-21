@@ -155,10 +155,14 @@ scripts/        smoke.mjs — zero-dependency integration verification
 | `ixs/` | `mcp.ts` (8 tools, triage), `rest.ts`, `schemas.ts` (money, Zod), `index.ts` (cached reads), `errors.ts` | D1 ✅ |
 | `mandate/` | `schema.ts`, `compile.ts` (D2) · `types.ts`, `evaluate.ts`, `explain.ts`, `facts.ts` (D3) | D2 ✅ D3 ✅ |
 | `audit/` | `receipt.ts` (build/hash/verify/replay), `store.ts` (append-only, hash-linked files), `report.ts` (byte-stable audit report) | D5 ✅ |
+| `telegram/` | `capabilities.ts` (five handlers returning exact text), **`bot.ts` + `parse.ts` (direct Bot API long-poll, deterministic intent parser — the demo surface, `npm run bot`)**, `agent.ts` (the same handlers as an OpenServ Agent, route-never-decide prompt), `mandates.ts` (per-chat store); `bin/bot.ts`, `bin/provision.ts`, `bin/agent.ts` | D6 ✅ direct bot is primary (RECON §6.12); OpenServ route optional — their Telegram integration form was failing on 21 Sep |
+| `ixs/` snapshots | `LastGood` memory + disk (`.snapshots/`), bigint-safe JSON; `fetchUniverse` fails on a REST wobble so the universe never shrinks to MCP's 1-of-5 (RECON §6.13) | D6 ✅ cold start degrades with STALE |
 | `signer/`, `execute/` | one signing module with guardrails; plan → run → status | D4 — **dormant**, not on the product surface |
 | `packages/web/` | console | D7–D8 |
 
 Tests: `*.unit.test.ts` never touch the network; `*.integration.test.ts` hit live IXS/SERV/RPC and cost a few `gpt-5.4-mini` calls. Rehearsal: `npm run act -- deposit 5000` (ALLOW → receipt), `npm run act -- deposit 50000 --message "…"` (REFUSE → receipt), `npm run receipt -- list|show|verify|replay|export`.
+
+**The OpenServ runtime LLM routes; it never decides.** The Telegram capabilities return the exact text to relay; the system prompt in `telegram/agent.ts` forbids adding, softening or inventing a verdict. If the runtime ever paraphrases a verdict, tighten the reply format — never move the verdict into the model.
 
 **The compliance evaluator is the product.** Everything else is plumbing around it. Its contract:
 

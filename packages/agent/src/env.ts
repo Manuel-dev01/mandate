@@ -38,6 +38,9 @@ const KEYS = [
   'FORK_RPC_URL',
   'FORK_CHAIN_ID',
   'RECEIPTS_DIR',
+  'SNAPSHOT_DIR',
+  'MANDATES_DIR',
+  'TELEGRAM_BOT_TOKEN',
 ] as const
 
 /**
@@ -91,6 +94,12 @@ const EnvSchema = z.object({
   FORK_CHAIN_ID: z.coerce.number().int().positive().default(97),
   /** Where receipts are written. Gitignored: they carry wallet addresses. */
   RECEIPTS_DIR: z.string().min(1).optional(),
+  /** Last-good vault snapshots so a cold process can degrade with a staleness badge. */
+  SNAPSHOT_DIR: z.string().min(1).optional(),
+  /** Per-chat mandates for the Telegram agent. Gitignored. */
+  MANDATES_DIR: z.string().min(1).optional(),
+  /** Direct Telegram bot (from @BotFather). Read only by bin/bot.ts. Never logged. */
+  TELEGRAM_BOT_TOKEN: z.string().regex(/^\d+:[A-Za-z0-9_-]{30,}$/, 'TELEGRAM_BOT_TOKEN must look like 123456789:AA…').optional(),
 })
 
 const parsed = EnvSchema.parse(present())
@@ -101,6 +110,9 @@ export const env = Object.freeze({
   IXS_MCP_URL: parsed.IXS_MCP_URL ?? `${parsed.IXS_API_BASE_URL}/mcp`,
   PORTFOLIO_DECLARED_PATH: parsed.PORTFOLIO_DECLARED_PATH ?? join(REPO_ROOT, 'packages', 'agent', 'portfolio.declared.json'),
   RECEIPTS_DIR: parsed.RECEIPTS_DIR ?? join(REPO_ROOT, 'data', 'receipts'),
+  SNAPSHOT_DIR: parsed.SNAPSHOT_DIR ?? join(REPO_ROOT, '.snapshots'),
+  /** Compiled rule sets, keyed by mandate text hash. */
+  COMPILE_CACHE_DIR: join(REPO_ROOT, 'packages', 'agent', '.cache'),
 })
 
 export type Env = typeof env

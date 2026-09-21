@@ -8,7 +8,7 @@ Judged on creativity, user-readiness, revenue potential. Every beat below target
 
 ## Beat 1 — The mandate (0:00–0:30)
 
-Paste into Telegram, in plain English:
+Paste into Telegram, in plain English (the bot's deterministic parser recognises a policy and calls `set_mandate`; the reply is the handler's exact text):
 
 > *"Preserve capital first. Never put more than 40% into a single vault, and no more than 60% on any one chain. Keep 20% liquid at all times. Testnet only. Only enter vaults I'm cleared for. Never touch a paused vault."*
 
@@ -45,7 +45,7 @@ Agent reads **live** vault state via IXS (TVL, status, on-chain `paused()`), run
 - `min_liquidity_buffer` — would leave **15.00%** liquid, floor 20.00%
 - `max_single_action_size` — one action of **50.00%** of the book, limit 25.00% *(the rule inferred from "Preserve capital first")*
 
-…and shows the context line: **"you would own 88.80% of this vault's TVL."**
+…and shows the context line: **"You would hold 88.80% of this vault's TVL."**
 
 *(Same declared portfolio as beat 2, pinned in `evaluate.unit.test.ts`. The numbers above are the Fuji fixture; on the BSC vault the same 50,000 breaches **four** rules (chain concentration too, since the book already holds 20,000 there) and the TVL-share line reads 81.47%. Either is fine on stage — the point is exact numbers. Rule 1 refuses on share of portfolio — the DSL reading; vault-TVL share is context, not the rule.)*
 
@@ -115,5 +115,5 @@ Close on the agent's **ERC-8004 identity** on 8004scan.io.
 | If | Then |
 |---|---|
 | IXS dev host wobbles | Cached snapshot renders with a staleness badge — never an error screen |
-| IXS REST is down on a cold start | Nothing is cached yet — D10 ships a disk snapshot of the vault universe so `listVaults()` degrades with a staleness badge even on first launch |
+| IXS down on a cold start | Served from `.snapshots/` (written on every good read) with the STALE badge; the whitelist check is never cached, so `whitelist_required` fails closed — "could not verify" — and the receipt says `factsStale: true`. Verified 18 Sep with IXS pointed at a dead address. Warm the snapshot with one `npm run act` before recording. |
 | SERV rate-limits | Pre-warmed prompt cache; `rationale` falls back to a deterministic template |
