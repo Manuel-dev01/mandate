@@ -403,6 +403,16 @@ Facts worth keeping:
 
 **Buyer note:** the buyer needs **no ETH** — only USDC. The facilitator pays the gas and submits the EIP-3009 authorization. Our rehearsal buyer `0x20fAd5B53f16A61B86e71580D959008899fA82CE` has 0 ETH and bought successfully.
 
+### 6.16 Deploys from GitHub, and why every redeploy looked like a crash (22 Sep 2026)
+
+Railway emailed **"Deploy Crashed!"** after ordinary redeploys. The container ran the service as `npm run serve`, and on SIGTERM npm reports `Lifecycle script serve failed … signal SIGTERM` and exits non-zero — our own shutdown handler never ran. Fix: `CMD ["node", "--import", "tsx", "src/bin/serve.ts"]` with `WORKDIR /app/packages/agent`, so the signal reaches the process that knows how to stop. The bot also sat in a 25-second long poll during shutdown; `stop()` now aborts the in-flight request and the aborted poll is not logged as an error.
+
+**Vercel deploys from GitHub** (`Manuel-dev01/mandate`, master): already connected, but the project's **Root Directory was `.`**, so the first git-triggered build failed — the live site stayed on the previous good deployment. Set `rootDirectory: "packages/web"` via `PATCH /v9/projects/{id}` (the CLI has no command for it); the next push built and deployed in 48 s.
+
+**Railway is still manual** (`railway up`): `railway service source connect --repo Manuel-dev01/mandate` answers **"User does not have access to the repo"** and the `githubRepos` query returns *Not Authorized* — Railway's GitHub App has not been granted access to the repo. That is a dashboard/GitHub action for the account owner: Railway → the `agent` service → Settings → Source → Connect Repo (installing the Railway GitHub App on `Manuel-dev01/mandate`).
+
+`scripts/watch-deploys.mjs` polls both deployments and prints only state changes: the agent's `/health` (Telegram poller state, receipts, uptime), the console's root, and the ledger (`receipts · sold · chain breaks`). `MANDATE_API_KEY` is needed for the ledger line; `/health` never is.
+
 ---
 
 ## 7. Sources

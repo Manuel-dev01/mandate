@@ -133,6 +133,8 @@ node scripts/web-smoke.mjs                           # every API route and conso
 
 **Live.** Console: <https://mandate-console-five.vercel.app> · Agent API: <https://agent-production-d238.up.railway.app/health> · Bot: [@mandaeteBot](https://t.me/mandaeteBot).
 
+**Deploys.** The console deploys from GitHub: a push to `master` rebuilds it on Vercel (root directory `packages/web`). The agent is still `railway up` until Railway's GitHub App is granted access to the repo (RECON §6.16). `node scripts/watch-deploys.mjs` prints a line whenever either one changes state.
+
 **Deploy.** Railway: a service from this repo with `packages/agent/Dockerfile`, a volume at `/data`, and `SERV_API_KEY`, `TELEGRAM_BOT_TOKEN`, `AGENT_PRIVATE_KEY` (burner) set — one replica only, because two Telegram pollers conflict. Vercel: root directory `packages/web`, `MANDATE_API_URL` pointing at the Railway URL.
 
 `scripts/smoke.mjs` has zero dependencies and checks SERV Reasoning, the IXS MCP and REST API, and live vault reads on both Avalanche Fuji and Robinhood Chain.
