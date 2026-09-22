@@ -7,6 +7,9 @@
 
 import { formatBaseUnits } from '../ixs/schemas.js'
 
+/** Where a receipt id points. Unset -> ids stay plain, rather than looking like dead links. */
+const CONSOLE_URL = (process.env['CONSOLE_URL'] ?? 'https://mandate-console-five.vercel.app').replace(/\/+$/, '')
+
 /** `5000.000000` -> `5,000`; `1234.500000` -> `1,234.5`; `0.005000` -> `0.005`. */
 export function prettyAmount(baseUnits: bigint, decimals: number): string {
   const raw = formatBaseUnits(baseUnits, decimals)
@@ -22,7 +25,8 @@ export function escapeHtml(s: string): string {
 }
 
 const HEX_RE = /\b[0-9a-f]{12,64}\b/g
-const RULE_TYPE_RE = /\b[a-z]+(?:_[a-z]+)+\b/g
+/** A receipt id, and only a receipt id: what follows these words opens on the console. */
+const RECEIPT_ID_RE = /\b(Receipt|receipt|Previous)(\s+)([0-9a-f]{12,64})\b/g
 const QUOTE_RE = /"([^"\n]{1,200})"/g
 const LABEL_RE = /^(Why|Verify|Replay|Breached|Issued|Mandate|Decision|Receipt|Previous|Portfolio|Settlement|TVL|Vault id|Vault facts)(?=[ :])/
 const CHECK_RE = /^([✓✗–] |\d+\. )([A-Z][A-Za-z ]+?)( — )/
@@ -38,9 +42,20 @@ export function toTelegramHtml(text: string): string {
   return lines
     .map((line, i) => {
       let out = escapeHtml(line)
-      out = out.replace(HEX_RE, (h) => `<code>${h}</code>`)
-      out = out.replace(RULE_TYPE_RE, (t) => `<code>${t}</code>`)
+      // Quoted clauses first, while the line is still plain: QUOTE_RE would otherwise
+      // italicise the href="…" of a link inserted below.
       out = out.replace(QUOTE_RE, (_m, q: string) => `"<i>${q}</i>"`)
+      // A receipt id becomes a real link to its page on the console; every other hash stays
+      // monospace, which Telegram makes tap-to-copy. Nothing is styled to look clickable
+      // unless it actually is — and rule types are left plain, since they lead nowhere.
+      const linked = new Set<string>()
+      if (CONSOLE_URL) {
+        out = out.replace(RECEIPT_ID_RE, (_m, word: string, gap: string, id: string) => {
+          linked.add(id)
+          return `${word}${gap}<a href="${CONSOLE_URL}/receipts/${id}">${id}</a>`
+        })
+      }
+      out = out.replace(HEX_RE, (h) => (linked.has(h) ? h : `<code>${h}</code>`))
       if (i === 0) return `<b>${out}</b>`
       out = out.replace(LABEL_RE, (l) => `<b>${l}</b>`)
       out = out.replace(CHECK_RE, (_m, mark, label, sep) => `${mark}<b>${label}</b>${sep}`)

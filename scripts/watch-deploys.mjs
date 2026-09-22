@@ -25,12 +25,22 @@ async function probe(name, url, check) {
   }
 }
 
+/** Only used to notice a restart; never printed, because it changes every tick. */
+let lastUptime = null
+
 const agent = () =>
   probe('agent', `${API}/health`, async (res) => {
     if (!res.ok) return { ok: false, detail: `health ${res.status}` }
     const j = await res.json()
     const tg = j.telegram?.state ?? 'none'
-    return { ok: tg === 'polling', detail: `telegram ${tg} · ${j.receipts} receipts · up ${j.uptimeSeconds}s${j.telegram?.lastError ? ` · ${j.telegram.lastError.slice(0, 60)}` : ''}` }
+    // Uptime is deliberately not part of the line: it changes every tick, and a
+    // healthy run must stay silent. A restart shows up as `restarted` instead.
+    const restarted = lastUptime !== null && j.uptimeSeconds < lastUptime
+    lastUptime = j.uptimeSeconds
+    return {
+      ok: tg === 'polling',
+      detail: `telegram ${tg} · ${j.receipts} receipts${restarted ? ' · restarted' : ''}${j.telegram?.lastError ? ` · ${j.telegram.lastError.slice(0, 60)}` : ''}`,
+    }
   })
 
 const console_ = () =>
@@ -45,9 +55,22 @@ const paywall = () =>
   })
 
 const last = new Map()
+const strikes = new Map()
+
+/**
+ * Two strikes before crying wolf: one dropped request is a flaky link, not an
+ * outage, and a watcher that fires on every blip gets ignored.
+ */
 async function tick() {
   for (const [name, fn] of [['agent', agent], ['console', console_], ['ledger', paywall]]) {
     const r = await fn()
+    if (!r.ok) {
+      const n = (strikes.get(name) ?? 0) + 1
+      strikes.set(name, n)
+      if (n < 2) continue
+    } else {
+      strikes.set(name, 0)
+    }
     const key = `${r.ok}|${r.detail}`
     if (last.get(name) !== key) {
       console.log(`${stamp()} ${r.ok ? '✓' : '✗'} ${name.padEnd(8)} ${r.detail}`)
