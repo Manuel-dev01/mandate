@@ -43,6 +43,8 @@ export class TelegramBot {
     lastError: null,
   }
   private running = false
+  /** Aborts the in-flight long poll so stop() returns at once instead of up to pollSeconds later. */
+  private inflight: AbortController | null = null
 
   constructor(private readonly opts: BotOptions) {
     this.api = `https://api.telegram.org/bot${opts.token}`
@@ -55,8 +57,13 @@ export class TelegramBot {
     return (await this.call('getMe', {})) as { id: number; username?: string }
   }
 
-  private async call(method: string, body: Record<string, unknown>): Promise<unknown> {
-    const res = await fetch(`${this.api}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  private async call(method: string, body: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+    const res = await fetch(`${this.api}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      ...(signal ? { signal } : {}),
+    })
     const json = (await res.json()) as { ok: boolean; result?: unknown; description?: string }
     if (!json.ok) throw new Error(`telegram ${method}: ${json.description ?? res.status}`)
     return json.result
@@ -130,9 +137,11 @@ export class TelegramBot {
     while (this.running) {
       let updates: Update[] = []
       try {
-        updates = (await this.call('getUpdates', { offset: this.offset, timeout: this.pollSeconds, allowed_updates: ['message'] })) as Update[]
+        this.inflight = new AbortController()
+        updates = (await this.call('getUpdates', { offset: this.offset, timeout: this.pollSeconds, allowed_updates: ['message'] }, this.inflight.signal)) as Update[]
         this.status = { ...this.status, lastPollAt: new Date().toISOString(), lastError: null }
       } catch (err) {
+        if (!this.running) break // we aborted it on purpose
         this.status = { ...this.status, lastError: err instanceof Error ? err.message : String(err) }
         this.log(`poll error: ${err instanceof Error ? err.message : String(err)} — retrying in 3s`)
         await new Promise((r) => setTimeout(r, 3000))
@@ -160,6 +169,7 @@ export class TelegramBot {
 
   stop(): void {
     this.running = false
+    this.inflight?.abort()
     this.status = { ...this.status, state: 'stopped' }
   }
 }

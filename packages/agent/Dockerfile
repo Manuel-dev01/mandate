@@ -23,4 +23,8 @@ ENV NODE_ENV=production \
 EXPOSE 8787
 
 # One instance only: two Telegram pollers make the Bot API answer "Conflict".
-CMD ["npm", "run", "serve", "--workspace=agent"]
+#
+# Run node directly, NOT through npm: npm reports a SIGTERM'd child as a non-zero
+# exit, so every ordinary redeploy looked like "Deploy Crashed" (RECON §6.16).
+WORKDIR /app/packages/agent
+CMD ["node", "--import", "tsx", "src/bin/serve.ts"]
