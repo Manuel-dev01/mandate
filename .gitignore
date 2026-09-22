@@ -21,6 +21,7 @@ npm-debug.log*
 data/receipts/
 data/mandates/
 data/openserv.json
+data/identity.json
 .openserv.json
 .snapshots/
 

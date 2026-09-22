@@ -160,7 +160,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
       <div style={{ marginTop: 40, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Link href={`/export/${r.id}`} className="btn primary">
-          Export audit report
+          Buy the audit report
         </Link>
         <Link href="/chain" className="btn">
           Back to the chain

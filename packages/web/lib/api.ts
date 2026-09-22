@@ -162,6 +162,8 @@ export interface StatsView {
   breaks: number
   head: string | null
   signedTxns: 0
+  sold: number
+  earned: string
 }
 
 export interface VaultRowView {
@@ -195,6 +197,41 @@ export interface VerifyView {
   verify: { ok: boolean; checks: { name: string; ok: boolean; detail: string }[] }
   replay: { reproduced: boolean; originalHash: string; replayHash: string; verdict: Verdict; replayVerdict: Verdict; diff: string | null }
   checkedAt: string
+}
+
+export interface ServiceFacts {
+  price: string
+  currency: 'USDC'
+  network: string
+  testnet: boolean
+  payTo: string
+  payToUrl: string | null
+  asset: string
+  facilitator: string
+  openserv: { listed: boolean; triggerUrl: string | null; paywallUrl: string | null; workflowId: string | null; name: string | null; price: string | null; active: boolean | null; checkedAt: string | null }
+}
+
+export interface IdentityFacts {
+  registered: boolean
+  agentId: string | null
+  chainId: number | null
+  txHash: string | null
+  txUrl: string | null
+  cardUrl: string | null
+  scanUrl: string | null
+}
+
+export interface SalesView {
+  sold: number
+  earned: string
+  currency: 'USDC'
+  recent: { at: string; receiptId: string; short: string; rail: string; txHash: string; txUrl: string | null; payer: string; price: string }[]
+}
+
+export interface X402View {
+  service: ServiceFacts
+  identity: IdentityFacts
+  sales: SalesView
 }
 
 export interface HealthView {

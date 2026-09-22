@@ -83,11 +83,13 @@ Press **VERIFY** (every hash re-derives) then **REPLAY**: **identical verdict, i
 
 ## Beat 5 — It earns (2:15–2:40)
 
-Click **Export audit report** → **x402 paywall** → pay 0.50 USDC → report delivered (`renderReport()` — byte-stable Markdown with every rule, every number, the explanation and the three hashes; `npm run receipt -- export <id>` until D9).
+Open the receipt's **Buy the audit report · 0.50 USDC**. The link answers a real **402 Payment Required** with x402 terms — 0.50 USDC on Base Sepolia, payee the agent's own ERC-8004 identity wallet — and the x402 pay page opens. Pay from the wallet; the facilitator settles and the file arrives: `renderReport()`, byte-stable Markdown with every rule, every number, the explanation and the three hashes. Refresh: **1 report sold · 0.50 USDC earned**, with the settlement transaction linked on Basescan.
+
+*(The same report is also listed as a paid service on OpenServ's x402 marketplace, fulfilled by the same agent. OpenServ settles Base mainnet in real USDC and its trigger endpoints were timing out on 22 Sep, so the stage payment goes through our own paywall — RECON §6.15.)*
 
 **Scores:** revenue potential, live and literal.
 
-> **Say:** "That's the business model running on stage. Per-report via x402, basis points per rebalance, seats for treasuries running several mandates."
+> **Say:** "That's the business model running on stage — a real 402, a real settlement, and a counter that only moves when someone actually paid. Per-report via x402, basis points per rebalance, seats for treasuries running several mandates."
 
 ---
 

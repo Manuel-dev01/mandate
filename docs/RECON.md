@@ -347,6 +347,62 @@ What bit on Railway: (1) `railway.json` config-as-code is deprecated and was **i
 
 **Presentation pass (22 Sep).** The base design's hero card was generic; the console now uses the product's own artifact as its visual system: a **paper receipt** (cream thermal paper, torn edge, grain, slight tilt) that prints the newest refusal row by row and stamps the verdict once (`components/paper-receipt.tsx`), and a **barcode derived from each receipt hash** (bar widths from the hex digits — `components/barcode.tsx`) on the hero, on every chain row, and above the hash block on the receipt page. The stamp reappears inline beside the receipt headline. A **"Where decisions are made"** section and the header/footer carry the Telegram icon + `@mandaeteBot`; every empty state shows the messages to send as chat bubbles with the Open button. Motion is one vocabulary (`globals.css`, `lib/motion.ts`, `app/template.tsx`): pages fade-rise on navigation, rows print top-to-bottom with a 30–70 ms stagger, the chain strip grows bar by bar, fired clauses ink in from the left, verify/replay results fade in, skeletons shimmer; everything is CSS, nothing loops except the header pulse, and `prefers-reduced-motion` disables all of it.
 
+### 6.15 Monetization: x402 on Base Sepolia, listed on OpenServ, ERC-8004 identity (22 Sep 2026)
+
+**Probed before writing any code.** `triggers.x402({...})` takes `name, description, price, input, timeout, walletAddress` - **no network option**; `client.payments.payWorkflow` builds `createSigner("base", key)` and reports `network: "base", chainId: 8453`, so **OpenServ x402 settles real USDC on Base mainnet**. Two live OpenServ x402 triggers were probed directly: neither answered within 25 s, one returned Cloudflare **524**. Meanwhile `GET https://x402.org/facilitator/supported` lists `{scheme:"exact", network:"eip155:84532"}` - the **public facilitator settles Base Sepolia**, free.
+
+**Decision (user): do both.** The service is listed on OpenServ (marketplace presence, real paywall URL, an `export_report` capability on agent 4509 fulfils it) and the demo is paid through **our own x402 on Base Sepolia**, so beat 5 never depends on their slow endpoint or on real money.
+
+Implementation: `monetize/x402.ts` (`reportRequirements`, `settlementOf` -> `paid | invalid | facilitator-down`), the paywall on `GET /receipts/:id/report` in `console/api.ts`, `audit/exports.ts` (append-only `exports.jsonl`, written **only** after a confirmed settlement), `monetize/service.ts` (`/x402` facts + `getPaywallHtml` pay page), `bin/buy.ts`, `bin/identity.ts`. The console key does **not** unlock the report - only `?preview=1` (40 labelled lines) is free.
+
+Facts worth keeping:
+- Base Sepolia USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e`; price `0.50` -> `500000` base units; payee = the provision wallet `0xEAbc...13`, which is also the ERC-8004 identity.
+- `wrapFetchWithPayment(fetch, signer)` caps spend at **0.10 USDC** by default - a 0.50 price fails with `Payment amount exceeds maximum allowed` until you pass `maxValue`. `bin/buy.ts` passes the seller's own `maxAmountRequired`.
+- Verified end to end locally: the buyer signs, the facilitator **verifies**, and rejects only with `invalid_exact_evm_insufficient_balance` on an unfunded burner - every step before the money is proven.
+- `@openserv-labs/client` 2.5.3 requires `workflow.goal` on `provision()` / `workflows.create` (1.1.4 did not) and adds `erc8004.registerOnChain` with testnet chain ids (84532 among them).
+- A facilitator outage returns **503** and sells nothing; a rejected payment returns 402 again with the facilitator's own reason.
+
+**Done, on-chain, 22 Sep:**
+
+| | |
+|---|---|
+| First sale | `0x083f9ae8e12792e6d9e00447409b564793c2c84ecf96b404985b6dc76705da1d` — 0.50 USDC, buyer `0x20fAd5B5…82CE` → payee `0xEAbc…13`, report delivered byte-identical to `renderReport` |
+| ERC-8004 identity | **`84532:9316`** on Base Sepolia, registry `0x8004A818BFB912233c491871b3d84c89A494BD9e`, owner `0xEAbc…13`, tx `0xcfcff628…0806`, [8004scan](https://www.8004scan.io/agents/base-sepolia/9316) |
+| Token URI | `https://agent-production-d238.up.railway.app/.well-known/agent-card.json` — served live by the agent itself, listing the paid report, the API, the console, Telegram and the wallet |
+| OpenServ listing | workflow **13897**, trigger `b03cd363-…`, token `dbcfc382…`, 0.50 USDC, **active and listed on their marketplace**. Note: the platform **overrides** the `walletAddress` we pass with the workspace wallet `0xD840924D…243D` (still ours, platform-managed), so the listing's payee differs from our own paywall's payee (`0xEAbc…13`, the ERC-8004 identity). The console shows our payee for our paywall and does not claim it for theirs. |
+
+**What bit on the platform:** (1) `workflows.create` rejects a short goal with `INVALID_PROJECT_GOAL` — the goal must describe a concrete deliverable. (2) The workspace wallet for 13893 came pre-stamped with `erc8004AgentId: "8453:999999918"` and `deployed: true`, a **placeholder that does not exist on Base mainnet either**, which makes `registerOnChain` take the update path and revert on `tokenURI`. `erc8004.deploy({ erc8004AgentId: '' })` clears `deployed` but not the id. (3) A fresh workspace (13897) avoids that, but its `PUT /workspaces/13897/erc-8004/presign-ipfs-url` returns **500** with an error id (13893's presign works), so their IPFS path is unusable for a new workspace. **Resolution:** register directly — `register(string agentURI)` on the registry with our own live agent card as the URI. One transaction, no IPFS, and the identity points at something anyone can fetch from the running agent. `npm run identity --via-openserv` still tries their path.
+
+**Buyer note:** the buyer needs **no ETH** — only USDC. The facilitator pays the gas and submits the EIP-3009 authorization. Our rehearsal buyer `0x20fAd5B53f16A61B86e71580D959008899fA82CE` has 0 ETH and bought successfully.
+
+### 6.15 Monetization: x402 on Base Sepolia, listed on OpenServ, ERC-8004 identity (22 Sep 2026)
+
+**Probed before writing any code.** `triggers.x402({...})` takes `name, description, price, input, timeout, walletAddress` - **no network option**; `client.payments.payWorkflow` builds `createSigner("base", key)` and reports `network: "base", chainId: 8453`, so **OpenServ x402 settles real USDC on Base mainnet**. Two live OpenServ x402 triggers were probed directly: neither answered within 25 s, one returned Cloudflare **524**. Meanwhile `GET https://x402.org/facilitator/supported` lists `{scheme:"exact", network:"eip155:84532"}` - the **public facilitator settles Base Sepolia**, free.
+
+**Decision (user): do both.** The service is listed on OpenServ (marketplace presence, real paywall URL, an `export_report` capability on agent 4509 fulfils it) and the demo is paid through **our own x402 on Base Sepolia**, so beat 5 never depends on their slow endpoint or on real money.
+
+Implementation: `monetize/x402.ts` (`reportRequirements`, `settlementOf` -> `paid | invalid | facilitator-down`), the paywall on `GET /receipts/:id/report` in `console/api.ts`, `audit/exports.ts` (append-only `exports.jsonl`, written **only** after a confirmed settlement), `monetize/service.ts` (`/x402` facts + `getPaywallHtml` pay page), `bin/buy.ts`, `bin/identity.ts`. The console key does **not** unlock the report - only `?preview=1` (40 labelled lines) is free.
+
+Facts worth keeping:
+- Base Sepolia USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e`; price `0.50` -> `500000` base units; payee = the provision wallet `0xEAbc...13`, which is also the ERC-8004 identity.
+- `wrapFetchWithPayment(fetch, signer)` caps spend at **0.10 USDC** by default - a 0.50 price fails with `Payment amount exceeds maximum allowed` until you pass `maxValue`. `bin/buy.ts` passes the seller's own `maxAmountRequired`.
+- Verified end to end locally: the buyer signs, the facilitator **verifies**, and rejects only with `invalid_exact_evm_insufficient_balance` on an unfunded burner - every step before the money is proven.
+- `@openserv-labs/client` 2.5.3 requires `workflow.goal` on `provision()` / `workflows.create` (1.1.4 did not) and adds `erc8004.registerOnChain` with testnet chain ids (84532 among them).
+- A facilitator outage returns **503** and sells nothing; a rejected payment returns 402 again with the facilitator's own reason.
+
+**Done, on-chain, 22 Sep:**
+
+| | |
+|---|---|
+| First sale | `0x083f9ae8e12792e6d9e00447409b564793c2c84ecf96b404985b6dc76705da1d` — 0.50 USDC, buyer `0x20fAd5B5…82CE` → payee `0xEAbc…13`, report delivered byte-identical to `renderReport` |
+| ERC-8004 identity | **`84532:9316`** on Base Sepolia, registry `0x8004A818BFB912233c491871b3d84c89A494BD9e`, owner `0xEAbc…13`, tx `0xcfcff628…0806`, [8004scan](https://www.8004scan.io/agents/base-sepolia/9316) |
+| Token URI | `https://agent-production-d238.up.railway.app/.well-known/agent-card.json` — served live by the agent itself, listing the paid report, the API, the console, Telegram and the wallet |
+| OpenServ listing | workflow **13897**, trigger `b03cd363-…`, token `dbcfc382…`, 0.50 USDC, **active and listed on their marketplace**. Note: the platform **overrides** the `walletAddress` we pass with the workspace wallet `0xD840924D…243D` (still ours, platform-managed), so the listing's payee differs from our own paywall's payee (`0xEAbc…13`, the ERC-8004 identity). The console shows our payee for our paywall and does not claim it for theirs. |
+
+**What bit on the platform:** (1) `workflows.create` rejects a short goal with `INVALID_PROJECT_GOAL` — the goal must describe a concrete deliverable. (2) The workspace wallet for 13893 came pre-stamped with `erc8004AgentId: "8453:999999918"` and `deployed: true`, a **placeholder that does not exist on Base mainnet either**, which makes `registerOnChain` take the update path and revert on `tokenURI`. `erc8004.deploy({ erc8004AgentId: '' })` clears `deployed` but not the id. (3) A fresh workspace (13897) avoids that, but its `PUT /workspaces/13897/erc-8004/presign-ipfs-url` returns **500** with an error id (13893's presign works), so their IPFS path is unusable for a new workspace. **Resolution:** register directly — `register(string agentURI)` on the registry with our own live agent card as the URI. One transaction, no IPFS, and the identity points at something anyone can fetch from the running agent. `npm run identity --via-openserv` still tries their path.
+
+**Buyer note:** the buyer needs **no ETH** — only USDC. The facilitator pays the gas and submits the EIP-3009 authorization. Our rehearsal buyer `0x20fAd5B53f16A61B86e71580D959008899fA82CE` has 0 ETH and bought successfully.
+
 ---
 
 ## 7. Sources

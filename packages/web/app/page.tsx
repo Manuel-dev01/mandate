@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { api, type ChainRowView, type ReceiptView, type StatsView } from '@/lib/api'
+import { api, type ChainRowView, type ReceiptView, type StatsView, type X402View } from '@/lib/api'
 import { MandateProse } from '@/components/checks'
 import { Card, Stat, Unreachable } from '@/components/panels'
 import { PaperReceipt } from '@/components/paper-receipt'
@@ -10,10 +10,11 @@ import { delay } from '@/lib/motion'
 export const dynamic = 'force-dynamic'
 
 export default async function Landing() {
-  const [stats, refusals, all] = await Promise.all([
+  const [stats, refusals, all, x402] = await Promise.all([
     api<StatsView>('/stats'),
     api<{ rows: ChainRowView[] }>('/receipts?verdict=REFUSE&limit=1'),
     api<{ rows: ChainRowView[] }>('/receipts?limit=200'),
+    api<X402View>('/x402', { timeoutMs: 15_000 }),
   ])
 
   const heroId = refusals.ok ? refusals.data.rows[0]?.id : undefined
@@ -58,7 +59,7 @@ export default async function Landing() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 40, borderTop: '1px solid var(--line)', paddingTop: 24 }}>
             <Stat label="Receipts" value={stats.data.receipts} />
             <Stat label="Refused" value={stats.data.refused} tone="red" />
-            <Stat label="Chain breaks" value={stats.data.breaks} tone={stats.data.breaks ? 'red' : undefined} />
+            <Stat label="Reports sold" value={stats.data.sold ?? 0} />
             <Stat label="Signed txns" value={stats.data.signedTxns} />
           </div>
         </div>
@@ -164,7 +165,16 @@ export default async function Landing() {
 
       <div className="section">
         <div className="wrap" style={{ paddingTop: 32, paddingBottom: 32, display: 'flex', justifyContent: 'space-between', gap: 24, fontSize: 11, letterSpacing: '.08em', color: 'var(--ghost)', flexWrap: 'wrap', textTransform: 'uppercase' }}>
-          <span>SERV Reasoning · IXS · Robinhood Chain</span>
+          <span>
+            {x402.ok && x402.data.identity.registered ? (
+              <a href={x402.data.identity.scanUrl ?? '#'} style={{ borderBottom: '1px solid var(--line-4)' }}>
+                8004:{x402.data.identity.agentId}
+              </a>
+            ) : (
+              'ERC-8004 · not registered'
+            )}
+            {x402.ok ? ` · x402 ${Number(x402.data.service.price).toFixed(2)} USDC/report` : ''}
+          </span>
           <span>Nothing here signs or sends</span>
           <a href={TELEGRAM_URL} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--dim)' }}>
             <TelegramIcon size={12} /> {TELEGRAM_HANDLE}

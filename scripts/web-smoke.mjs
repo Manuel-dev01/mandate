@@ -38,13 +38,24 @@ try {
   m.status === 200 ? ok('/mandate', m.body.empty ? 'empty' : `${m.body.mandate.rules.length} rules · ${m.body.mandate.hash.slice(0, 12)}`) : bad('/mandate', `${m.status}`)
   const v = await get(`${API}/vaults`)
   v.status === 200 && Array.isArray(v.body?.vaults) ? ok('/vaults', `${v.body.vaults.length} vaults · ${v.body.stale ? 'STALE' : 'live'}`) : bad('/vaults', `${v.status}`)
+  const x = await get(`${API}/x402`)
+  x.status === 200 && x.body?.service?.price
+    ? ok('/x402', `${x.body.service.price} USDC on ${x.body.service.network} · ${x.body.sales.sold} sold · identity ${x.body.identity.registered ? x.body.identity.agentId : 'not registered'}`)
+    : bad('/x402', `${x.status}`)
   if (head) {
     const r = await get(`${API}/receipts/${head}`)
     r.status === 200 && r.body?.checks?.length === 7 ? ok('/receipts/:id', `${r.body.headline} · ${r.body.action.amount}`) : bad('/receipts/:id', `${r.status}`)
     const vf = await get(`${API}/receipts/${head}/verify`)
     vf.status === 200 && vf.body?.verify?.ok && vf.body?.replay?.reproduced ? ok('/receipts/:id/verify', 'verified + reproduced') : bad('/receipts/:id/verify', JSON.stringify(vf.body).slice(0, 120))
-    const rp = await get(`${API}/receipts/${head}/report`, true)
-    rp.status === 200 && rp.body.startsWith('# Mandate decision receipt') ? ok('/receipts/:id/report', `${rp.body.length} chars`) : bad('/receipts/:id/report', `${rp.status}`)
+    const gated = await fetch(`${API}/receipts/${head}/report`)
+    const challenge = await gated.json().catch(() => null)
+    gated.status === 402 && challenge?.accepts?.[0]?.network
+      ? ok('/receipts/:id/report', `402 · ${challenge.accepts[0].maxAmountRequired} base units on ${challenge.accepts[0].network}`)
+      : bad('/receipts/:id/report', `expected 402, got ${gated.status}`)
+    const rp = await get(`${API}/receipts/${head}/report?preview=1`, true)
+    rp.status === 200 && rp.body.startsWith('# Mandate decision receipt') && rp.body.includes('over x402')
+      ? ok('/receipts/:id/report?preview=1', `${rp.body.length} chars, labelled`)
+      : bad('/receipts/:id/report?preview=1', `${rp.status}`)
   }
 } catch (err) {
   bad('api', err.message)
@@ -56,7 +67,7 @@ const pages = [
   ['/chain', 'Receipt chain'],
   ['/mandate', 'Compiled mandate'],
   ['/vaults', 'Vault universe'],
-  ...(head ? [[`/receipts/${head}`, 'RCPT'], [`/export/${head}`, 'Export audit report']] : []),
+  ...(head ? [[`/receipts/${head}`, 'RCPT'], [`/export/${head}`, 'One decision, sold as its proof']] : []),
 ]
 for (const [path, sentinel] of pages) {
   try {
