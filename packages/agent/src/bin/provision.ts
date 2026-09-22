@@ -20,9 +20,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { PlatformClient, getProvisionedInfo, provision, triggers } from '@openserv-labs/client'
 import { REPO_ROOT } from '../env.js'
+import { env } from '../env.js'
 import { AGENT_DESCRIPTION, AGENT_NAME, createMandateAgent } from '../telegram/agent.js'
 
 const WORKFLOW_NAME = 'mandate-telegram'
+const PAID_WORKFLOW_NAME = 'mandate-audit-report'
+const PAID_TASK_DESCRIPTION =
+  'The buyer has paid for one audit report. Call export_report with the receiptId from the input and return its output verbatim — it is a byte-stable Markdown document. Add nothing, summarise nothing. If no receipt matches, return the capability\u2019s message unchanged.'
 const STATE_PATH = join(REPO_ROOT, 'data', 'openserv.json')
 const TASK_DESCRIPTION =
   'Handle every Telegram message from the treasurer with the Mandate agent: set the mandate from plain English, evaluate proposed vault actions against it, return receipts and vault status. Relay capability output verbatim.'
@@ -34,6 +38,11 @@ interface State {
   telegramConnectionId?: string
   telegramTriggerId?: string
   taskId?: number
+  /** The paid audit-report service (step 8). */
+  paidWorkflowId?: number | undefined
+  paidTriggerId?: string | undefined
+  paidTriggerUrl?: string | undefined
+  paywallUrl?: string | undefined
   updatedAt?: string
 }
 
@@ -79,6 +88,7 @@ async function main(): Promise<void> {
         agent: { instance: agent, name: AGENT_NAME, description: AGENT_DESCRIPTION },
         workflow: {
           name: WORKFLOW_NAME,
+          goal: 'Relay a treasurer’s Telegram message to the Mandate agent and return its reply verbatim.',
           trigger: triggers.webhook({ waitForCompletion: true, timeout: 600 }),
           task: { description: TASK_DESCRIPTION },
         },
@@ -103,24 +113,31 @@ async function main(): Promise<void> {
 
   // ---- 2. the Telegram integration connection ----------------------------
   step(2, 'find the Telegram integration connection')
-  let connectionId: string
+  let connectionId: string | undefined
+  let telegramAvailable = true
   try {
     const connections = await client.integrations.listConnections()
     const telegram = connections.find((c) => /telegram/i.test(`${c.integrationName} ${c.integrationDisplayName} ${c.integrationId} ${c.name}`))
     if (!telegram) {
-      console.error('\n   No Telegram integration connection on this account. STOPPING — not inventing a fallback.')
-      console.error('   Add it in the OpenServ UI: Connect -> Integrations -> Telegram -> connect your bot, then re-run this.')
-      console.error(`   Connections seen: ${connections.map((c) => `${c.integrationDisplayName} (${c.integrationType})`).join(', ') || 'none'}`)
-      process.exit(2)
+      // Their integration form was failing on 21 Sep (RECON §6.12) and the demo runs the
+      // direct bot, so this is a skip, not a stop — steps 3-7 only wire that route.
+      console.log('   none on this account — skipping the platform Telegram route (the direct bot is the demo surface)')
+      console.log(`   connections seen: ${connections.map((c) => `${c.integrationDisplayName} (${c.integrationType})`).join(', ') || 'none'}`)
+      telegramAvailable = false
+    } else {
+      connectionId = telegram.id
+      console.log(`   ${telegram.integrationDisplayName} · connection ${connectionId}`)
     }
-    connectionId = telegram.id
-    console.log(`   ${telegram.integrationDisplayName} · connection ${connectionId}`)
   } catch (err) {
     fail(2, 'integrations.listConnections()', err)
   }
-  state.telegramConnectionId = connectionId!
-  saveState(state)
+  if (telegramAvailable) {
+    state.telegramConnectionId = connectionId!
+    saveState(state)
+  }
 
+  // ---- 3-7: the platform Telegram route, only when the integration exists ----
+  if (telegramAvailable) {
   // ---- 3. on-message trigger --------------------------------------------
   step(3, 'create + activate the Telegram on-message trigger')
   try {
@@ -205,7 +222,56 @@ async function main(): Promise<void> {
     fail(7, 'workflows.setRunning', err)
   }
 
+  } else {
+    console.log('\n   steps 3-7 skipped: no Telegram integration. The paid service below does not need one.')
+  }
+
+  // ---- 8. the paid audit-report service ----------------------------------
+  // A second workflow, because its task description is its own: return the report
+  // for one receipt id. The Telegram workflow keeps its own shape.
+  step(8, 'list the audit report as a paid x402 service')
+  try {
+    if (state.paidWorkflowId && state.paidTriggerUrl) {
+      console.log(`   reusing paid workflow ${state.paidWorkflowId}`)
+    } else {
+      const paid = await client.workflows.create({
+        name: PAID_WORKFLOW_NAME,
+        goal: 'Sell one Mandate audit report: given a receipt id, return the byte-stable report for that decision.',
+        triggers: [
+          triggers.x402({
+            name: 'Mandate — audit report',
+            description:
+              'A reproducible audit record for one autonomous treasury decision: every rule checked with its actual value and limit, the clause of the policy that produced it, the live vault facts it was decided on, and three hashes anyone can re-derive.',
+            price: env.X402_PRICE_USDC,
+            input: { receiptId: { type: 'string', description: 'Receipt id, or any unique prefix of it' } },
+            walletAddress: env.X402_PAY_TO,
+          }),
+        ],
+        tasks: [{ name: 'export', agentId: agentId!, description: PAID_TASK_DESCRIPTION }],
+      })
+      state.paidWorkflowId = paid.id
+      const trigger = (paid.triggers ?? [])[0] as { id?: string; webhookUrl?: string; paywallUrl?: string } | undefined
+      state.paidTriggerId = trigger?.id
+      state.paidTriggerUrl = trigger?.webhookUrl
+      state.paywallUrl = trigger?.paywallUrl
+      console.log(`   workflow ${paid.id} · trigger ${trigger?.id ?? '?'}`)
+    }
+    if (state.paidTriggerId) await client.triggers.activate({ workflowId: state.paidWorkflowId!, id: state.paidTriggerId }).catch(() => undefined)
+    await client.workflows.setRunning({ id: state.paidWorkflowId! }).catch(() => undefined)
+    if (state.paidTriggerUrl) console.log(`   trigger url  ${state.paidTriggerUrl}`)
+    if (state.paywallUrl) console.log(`   paywall url  ${state.paywallUrl}`)
+  } catch (err) {
+    // The listing is a bonus: the demo's paywall is our own x402 on Base Sepolia.
+    console.error(`   step 8 failed (the OpenServ listing is optional): ${err instanceof Error ? err.message : String(err)}`)
+  }
+
   saveState(state)
+  if (state.paidTriggerUrl) {
+    console.log(`\nset on Railway (and .env) so the console can show the listing:`)
+    console.log(`  X402_TRIGGER_URL=${state.paidTriggerUrl}`)
+    if (state.paywallUrl) console.log(`  X402_PAYWALL_URL=${state.paywallUrl}`)
+    console.log(`  X402_WORKFLOW_ID=${state.paidWorkflowId}`)
+  }
   console.log(`\nprovisioned:\n  agentId      ${state.agentId}\n  workflowId   ${state.workflowId}\n  triggerId    ${state.telegramTriggerId}\n  taskId       ${state.taskId}\n  connection   ${state.telegramConnectionId}\n  state        ${STATE_PATH}`)
   console.log('\nnext: npm run agent --workspace=agent   (then message the bot on Telegram)')
 }

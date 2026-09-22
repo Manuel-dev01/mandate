@@ -45,6 +45,21 @@ const KEYS = [
   'PORT',
   'CONSOLE_API_KEY',
   'X402_PRICE_USDC',
+  'X402_PAY_TO',
+  'X402_NETWORK',
+  'X402_ASSET',
+  'X402_FACILITATOR_URL',
+  'X402_TRIGGER_URL',
+  'X402_PAYWALL_URL',
+  'X402_WORKFLOW_ID',
+  'ERC8004_AGENT_ID',
+  'ERC8004_TX_HASH',
+  'ERC8004_CARD_URL',
+  'ERC8004_SCAN_URL',
+  'OPENSERV_API_KEY',
+  'WALLET_PRIVATE_KEY',
+  'BUYER_PRIVATE_KEY',
+  'PUBLIC_API_URL',
 ] as const
 
 /**
@@ -110,8 +125,47 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(8787),
   /** Optional shared secret the web console sends as x-console-key. The data is public either way. */
   CONSOLE_API_KEY: z.string().min(8).optional(),
-  /** Shown on the export page now; charged by x402 from D9. */
+  /** What one audit report costs. Decimal USDC; never parsed as a float. */
   X402_PRICE_USDC: z.string().regex(/^\d+(\.\d{1,6})?$/).default('0.50'),
+  /** Where payment goes: the agent's identity wallet (also its ERC-8004 identity). */
+  X402_PAY_TO: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/, 'X402_PAY_TO must be an address')
+    .default('0xEAbc8679638213F952B982dE4e03482B15C77B13'),
+  /** Settlement network. Base Sepolia: the public facilitator supports it and its USDC is free (RECON §6.15). */
+  X402_NETWORK: z.enum(['base-sepolia', 'base']).default('base-sepolia'),
+  /** USDC on X402_NETWORK. Default is Base Sepolia USDC, from the x402 package's own config. */
+  X402_ASSET: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/)
+    .default('0x036CbD53842c5426634e7929541eC2318f3dCF7e'),
+  /** Overrides the public x402.org facilitator. Rarely needed. */
+  X402_FACILITATOR_URL: z.string().url().optional(),
+  /** The OpenServ paid-service listing (written by `npm run provision`). Display only. */
+  X402_TRIGGER_URL: z.string().url().optional(),
+  X402_PAYWALL_URL: z.string().url().optional(),
+  X402_WORKFLOW_ID: z.string().min(1).optional(),
+  /** ERC-8004 identity (written by `npm run identity`). Display only. */
+  ERC8004_AGENT_ID: z.string().min(1).optional(),
+  ERC8004_TX_HASH: z.string().min(1).optional(),
+  ERC8004_CARD_URL: z.string().url().optional(),
+  ERC8004_SCAN_URL: z.string().url().optional(),
+  /** Agent key from .openserv.json; when set, bin/serve.ts also runs the OpenServ agent. */
+  OPENSERV_API_KEY: z.string().min(8).optional(),
+  /** The OpenServ identity wallet — created by provision(), used by `npm run identity`. NOT the burner. */
+  WALLET_PRIVATE_KEY: z
+    .string()
+    .regex(/^(0x)?[0-9a-fA-F]{64}$/)
+    .transform((k) => (k.startsWith('0x') ? k : `0x${k}`) as `0x${string}`)
+    .optional(),
+  /** A separate burner that BUYS a report in rehearsal. Paying yourself is not a sale. */
+  BUYER_PRIVATE_KEY: z
+    .string()
+    .regex(/^(0x)?[0-9a-fA-F]{64}$/)
+    .transform((k) => (k.startsWith('0x') ? k : `0x${k}`) as `0x${string}`)
+    .optional(),
+  /** This API's public base URL, so an x402 `resource` is the URL actually paid for. */
+  PUBLIC_API_URL: z.string().url().optional(),
 })
 
 const parsed = EnvSchema.parse(present())

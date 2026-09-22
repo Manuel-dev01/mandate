@@ -16,15 +16,19 @@
     "agent": "tsx src/bin/agent.ts",
     "provision": "tsx src/bin/provision.ts",
     "bot": "tsx src/bin/bot.ts",
-    "serve": "tsx src/bin/serve.ts"
+    "serve": "tsx src/bin/serve.ts",
+    "buy": "tsx src/bin/buy.ts",
+    "identity": "tsx src/bin/identity.ts"
   },
   "dependencies": {
+    "@openserv-labs/client": "^2.5.3",
     "@openserv-labs/sdk": "^2",
-    "@openserv-labs/client": "^1",
+    "dotenv": "^16",
     "openai": "^5",
     "viem": "^2",
-    "zod": "^3",
-    "dotenv": "^16"
+    "x402": "^1.2.0",
+    "x402-fetch": "^1.2.0",
+    "zod": "^3"
   },
   "devDependencies": {
     "tsx": "^4",

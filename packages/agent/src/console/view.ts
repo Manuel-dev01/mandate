@@ -5,12 +5,13 @@
  * so the console and the chat never disagree about a check.
  */
 
-import type { ChainVerification, Receipt } from '../audit/index.js'
+import type { ChainVerification, ExportLedger, Receipt } from '../audit/index.js'
 import type { Snapshot, VaultUniverse } from '../ixs/index.js'
 import type { VaultState } from '../ixs/schemas.js'
 import type { RuleSet, RuleType } from '../mandate/schema.js'
 import type { RuleCheck, Verdict } from '../mandate/types.js'
 import { prettyAmount } from '../telegram/format.js'
+import { explorerTx } from '../monetize/x402.js'
 import { checkPhrase, ruleCode, ruleLabel, ruleThreshold, trimVerdict } from '../telegram/present.js'
 
 const MAINNET_CHAIN_IDS = new Set([4663, 8453, 1])
@@ -431,5 +432,33 @@ export function vaultsView(universe: Snapshot<VaultUniverse>, states: ReadonlyMa
     source: universe.source,
     chains: new Set(vaults.map((v) => v.chainId)).size,
     vaults,
+  }
+}
+
+// ------------------------------------------------------------------ sales
+
+export interface SalesView {
+  readonly sold: number
+  readonly earned: string
+  readonly currency: 'USDC'
+  readonly recent: readonly { at: string; receiptId: string; short: string; rail: string; txHash: string; txUrl: string | null; payer: string; price: string }[]
+}
+
+/** What the storefront shows. Zero until a settlement actually happened. */
+export function salesView(ledger: ExportLedger, limit = 5): SalesView {
+  return {
+    sold: ledger.count(),
+    earned: ledger.earned(),
+    currency: 'USDC',
+    recent: ledger.list(limit).map((s) => ({
+      at: s.at,
+      receiptId: s.receiptId,
+      short: s.receiptId.slice(0, 12),
+      rail: s.rail,
+      txHash: s.txHash,
+      txUrl: explorerTx(s.txHash, s.network),
+      payer: s.payer,
+      price: s.price,
+    })),
   }
 }

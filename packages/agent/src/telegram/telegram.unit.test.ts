@@ -10,7 +10,8 @@ import type { Snapshot, VaultUniverse } from '../ixs/index.js'
 import { parseDecimalAmount, type Vault } from '../ixs/schemas.js'
 import { buildRuleSet, type CompiledRule } from '../mandate/schema.js'
 import type { Decision, PortfolioState, VaultFacts } from '../mandate/types.js'
-import { getReceipt, help, proposeAction, resolveVault, setMandate, vaultStatus, type CapabilityDeps } from './capabilities.js'
+import { renderReport } from '../audit/report.js'
+import { exportReport, getReceipt, help, proposeAction, resolveVault, setMandate, vaultStatus, type CapabilityDeps } from './capabilities.js'
 import { MemoryMandateStore } from './mandates.js'
 
 const usdc = (n: number | string) => parseDecimalAmount(String(n), 6)
@@ -267,4 +268,20 @@ test('help is plain text and names the four things to do', () => {
   const h = help()
   assert.ok(h.includes('Paste your policy') && h.includes('receipt <id>') && h.includes('vault status'))
   assert.doesNotMatch(h, /\\\[|```/)
+})
+
+test('export_report: the product being sold is renderReport, verbatim', async () => {
+  const d = deps()
+  d.mandates.set('ws-1', RULE_SET)
+  const reply = await proposeAction({ kind: 'deposit', amount: '5000', vault: 'BSC' }, 'ws-1', d)
+  const id = /Receipt ([0-9a-f]{12})/.exec(reply)?.[1]
+  assert.ok(id, 'a receipt was recorded')
+
+  const full = d.receipts.get(d.receipts.resolve!(id!)!)!
+  const sold = await exportReport({ receiptId: id! }, d)
+  assert.equal(sold, renderReport(full), 'byte-for-byte, no framing added')
+  assert.ok(sold.startsWith('# Mandate decision receipt'))
+
+  const missing = await exportReport({ receiptId: 'deadbeefcafe' }, d)
+  assert.match(missing, /^No receipt matches/, 'an unknown id sells nothing and says so')
 })

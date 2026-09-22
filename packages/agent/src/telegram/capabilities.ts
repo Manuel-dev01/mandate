@@ -11,7 +11,7 @@
  * Telegram renders plain text: no LaTeX, no markdown tables, short lines.
  */
 
-import { receiptStore, record, replayReceipt, verifyReceipt, type ReceiptStore } from '../audit/index.js'
+import { receiptStore, record, renderReport, replayReceipt, verifyReceipt, type ReceiptStore } from '../audit/index.js'
 import { env } from '../env.js'
 import { listVaults, type Snapshot, type VaultUniverse } from '../ixs/index.js'
 import { parseDecimalAmount, type Vault } from '../ixs/schemas.js'
@@ -221,4 +221,21 @@ export function help(): string {
     '',
     'Every verdict is deterministic code. I explain decisions; I never make exceptions.',
   ].join('\n')
+}
+
+/**
+ * The product being sold: one receipt as its byte-stable audit report.
+ *
+ * Reached only through a paid OpenServ workflow (our own x402 paywall serves the
+ * same bytes directly from the API). Returns renderReport() verbatim — no
+ * summary, no framing — so what a buyer receives is exactly what the console
+ * previews and what `npm run receipt -- export` produces.
+ */
+export async function exportReport(args: { receiptId: string }, deps: CapabilityDeps = defaultDeps()): Promise<string> {
+  const store = deps.receipts
+  const query = args.receiptId.trim().toLowerCase()
+  const id = store.resolve ? store.resolve(query) : query
+  const receipt = id ? store.get(id) : null
+  if (!receipt) return `No receipt matches "${args.receiptId}". Use the id from a decision reply or the console, e.g. "b7a6d786dc63".`
+  return renderReport(receipt)
 }

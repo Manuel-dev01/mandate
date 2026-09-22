@@ -10,12 +10,15 @@
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { receiptStore, renderReport, replayReceipt, verifyReceipt, type Receipt, type ReceiptStore } from '../audit/index.js'
+import { exportLedger, receiptStore, renderReport, replayReceipt, verifyReceipt, type ExportLedger, type Receipt, type ReceiptStore } from '../audit/index.js'
 import { env } from '../env.js'
 import { getVaultState, listVaults, type Snapshot, type VaultUniverse } from '../ixs/index.js'
 import type { VaultState } from '../ixs/schemas.js'
 import type { RuleType } from '../mandate/schema.js'
-import { chainRowView, mandateView, receiptView, statsView, tallyFired, vaultsView, type ChainRowView } from './view.js'
+import { agentCard } from '../monetize/agent-card.js'
+import { identityFacts, paywallPage, serviceFacts } from '../monetize/service.js'
+import { paymentResponseHeader, reportRequirements, settlementOf, X402_VERSION, type Settlement } from '../monetize/x402.js'
+import { chainRowView, mandateView, receiptView, salesView, statsView, tallyFired, vaultsView, type ChainRowView } from './view.js'
 
 export interface ConsoleDeps {
   store: ReceiptStore & { resolve?: (prefix: string) => string | null }
@@ -23,6 +26,17 @@ export interface ConsoleDeps {
   vaultState: (vaultId: string) => Promise<Snapshot<VaultState>>
   /** What the poller is doing, for /health. */
   telegram: () => { state: string; username: string | null; lastPollAt: string | null; lastError: string | null } | null
+  /** The business facts. Injectable so unit tests never read ambient env or hit the platform. */
+  service?: (() => Promise<import('../monetize/service.js').ServiceFacts>) | undefined
+  identity?: (() => import('../monetize/service.js').IdentityFacts) | undefined
+  /** Whether the OpenServ agent (which serves the paid workflow) is connected. */
+  openserv?: (() => { state: string; note: string | null }) | undefined
+  /** Sales, written only after a settlement the facilitator confirmed. */
+  ledger: ExportLedger
+  /** Public base URL of this API, so an x402 `resource` is the URL actually paid for. */
+  origin: string
+  /** Header -> settlement. Injected so the unit tests never touch a facilitator. */
+  settle?: (header: string, receiptId: string, origin: string) => Promise<Settlement>
   apiKey?: string | undefined
   now?: () => Date
 }
@@ -30,6 +44,8 @@ export interface ConsoleDeps {
 export function defaultConsoleDeps(): ConsoleDeps {
   return {
     store: receiptStore(),
+    ledger: exportLedger(),
+    origin: env.PUBLIC_API_URL ?? `http://localhost:${env.PORT}`,
     universe: () => listVaults(),
     vaultState: (id) => getVaultState(id),
     telegram: () => null,
@@ -77,14 +93,29 @@ function firedTally(store: ConsoleDeps['store'], cache: { head: string | null; f
   return cache.fired
 }
 
-export type ConsoleHandler = (req: { path: string; query: URLSearchParams }) => Promise<{ status: number; body: unknown; contentType?: string }>
+export type ConsoleHandler = (req: {
+  path: string
+  query: URLSearchParams
+  /** The x402 payment header, when the buyer sent one. */
+  payment?: string | undefined
+  /** True when a browser asked for the page, so the paywall can be HTML. */
+  wantsHtml?: boolean | undefined
+}) => Promise<{ status: number; body: unknown; contentType?: string; headers?: Record<string, string> }>
+
+/** Free, and labelled as free: enough of the report to judge it, never the whole file. */
+const PREVIEW_LINES = 40
+function previewOf(markdown: string, price: string): string {
+  const lines = markdown.split('\n')
+  const shown = lines.slice(0, PREVIEW_LINES).join('\n')
+  return `${shown}\n\n---\n\n_Preview: ${PREVIEW_LINES} of ${lines.length} lines. The full report is ${price} USDC over x402._\n`
+}
 
 /** The routing, separated from node:http so the unit tests can call it directly. */
 export function createConsoleHandler(deps: ConsoleDeps): ConsoleHandler {
   const cache: { head: string | null; fired: Record<RuleType, number> | null } = { head: null, fired: null }
   const now = deps.now ?? (() => new Date())
 
-  return async ({ path, query }) => {
+  return async ({ path, query, payment, wantsHtml }) => {
     const json = (body: unknown, status = 200) => ({ status, body })
 
     if (path === '/health') {
@@ -96,12 +127,13 @@ export function createConsoleHandler(deps: ConsoleDeps): ConsoleHandler {
         head,
         receipts: deps.store.list({ limit: MAX_LIST }).length,
         telegram: deps.telegram(),
+        openserv: deps.openserv?.() ?? { state: 'disabled', note: null },
       })
     }
 
     if (path === '/stats') {
       const rows = deps.store.list({ limit: MAX_LIST })
-      return json(statsView(rows, deps.store.verifyChain(), deps.store.head()))
+      return json({ ...statsView(rows, deps.store.verifyChain(), deps.store.head()), ...salesView(deps.ledger) })
     }
 
     if (path === '/receipts') {
@@ -118,7 +150,41 @@ export function createConsoleHandler(deps: ConsoleDeps): ConsoleHandler {
       const r = resolveReceipt(deps.store, receiptMatch[1]!.toLowerCase())
       const sub = receiptMatch[2]
       if (sub === 'verify') return json({ id: r.id, verify: verifyReceipt(r), replay: replayReceipt(r), checkedAt: now().toISOString() })
-      if (sub === 'report') return { status: 200, body: renderReport(r), contentType: 'text/markdown; charset=utf-8' }
+      if (sub === 'report') {
+        const markdown = renderReport(r)
+        // The preview is free and says so. The console shows exactly this.
+        if (query.get('preview') === '1') return { status: 200, body: previewOf(markdown, env.X402_PRICE_USDC), contentType: 'text/markdown; charset=utf-8' }
+
+        const requirements = reportRequirements(r.id, deps.origin)
+        if (!payment) {
+          // A browser gets the x402 pay page; a machine gets the challenge.
+          if (wantsHtml) return { status: 402, body: paywallPage(requirements), contentType: 'text/html; charset=utf-8' }
+          return { status: 402, body: { x402Version: X402_VERSION, accepts: [requirements], error: 'payment required' } }
+        }
+
+        const settlement = deps.settle ? await deps.settle(payment, r.id, deps.origin) : await settlementOf(payment, requirements)
+        if (settlement.kind === 'facilitator-down') {
+          // Never hand over the file on a maybe, and never blame the buyer for our outage.
+          throw new HttpError(503, `could not reach the x402 facilitator to settle the payment (${settlement.reason}) — nothing was charged; please retry`)
+        }
+        if (settlement.kind === 'invalid') {
+          return { status: 402, body: { x402Version: X402_VERSION, accepts: [requirements], error: settlement.reason } }
+        }
+        deps.ledger.record({
+          receiptId: r.id,
+          rail: requirements.network === 'base' ? 'x402-base' : 'x402-sepolia',
+          txHash: settlement.txHash,
+          payer: settlement.payer,
+          price: env.X402_PRICE_USDC,
+          network: settlement.network,
+        })
+        return {
+          status: 200,
+          body: markdown,
+          contentType: 'text/markdown; charset=utf-8',
+          headers: { 'X-PAYMENT-RESPONSE': paymentResponseHeader(settlement) },
+        }
+      }
       return json(receiptView(r, firedTally(deps.store, cache)))
     }
 
@@ -143,7 +209,14 @@ export function createConsoleHandler(deps: ConsoleDeps): ConsoleHandler {
       return json({ ...view, mainnetRefusals, price: env.X402_PRICE_USDC })
     }
 
-    if (path === '/') return json({ name: 'mandate console api', routes: ['/health', '/stats', '/receipts', '/receipts/:id', '/receipts/:id/verify', '/receipts/:id/report', '/mandate', '/vaults'] })
+    // The ERC-8004 token URI points here: the identity is checkable against a running agent.
+    if (path === '/.well-known/agent-card.json') return json(agentCard(deps.origin))
+
+    if (path === '/x402') {
+      return json({ service: await (deps.service ?? serviceFacts)(), identity: (deps.identity ?? identityFacts)(), sales: salesView(deps.ledger) })
+    }
+
+    if (path === '/') return json({ name: 'mandate console api', routes: ['/health', '/stats', '/receipts', '/receipts/:id', '/receipts/:id/verify', '/receipts/:id/report', '/mandate', '/vaults', '/x402', '/.well-known/agent-card.json'] })
 
     throw new HttpError(404, `no route ${path}`)
   }
@@ -155,17 +228,27 @@ export function createConsoleServer(deps: ConsoleDeps = defaultConsoleDeps(), lo
   return createServer(async (req: IncomingMessage, res: ServerResponse) => {
     const started = Date.now()
     const url = new URL(req.url ?? '/', 'http://localhost')
-    const send = (status: number, body: string, contentType = 'application/json; charset=utf-8') => {
-      res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' })
+    const send = (status: number, body: string, contentType = 'application/json; charset=utf-8', extra: Record<string, string> = {}) => {
+      res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Access-Control-Expose-Headers': 'X-PAYMENT-RESPONSE', ...extra })
       res.end(body)
       log(`${req.method} ${url.pathname} ${status} ${Date.now() - started}ms`)
     }
     try {
       if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'read-only: GET only')
-      if (deps.apiKey && url.pathname !== '/health' && req.headers['x-console-key'] !== deps.apiKey) throw new HttpError(401, 'x-console-key required')
-      const out = await handle({ path: url.pathname.replace(/\/+$/, '') || '/', query: url.searchParams })
-      if (out.contentType) send(out.status, String(out.body), out.contentType)
-      else send(out.status, JSON.stringify(out.body))
+      // The paid report is public on purpose: anyone with USDC can buy one, console key or not.
+      // Public by design: the paid report (anyone with USDC) and the agent card (the ERC-8004 token URI).
+      const isPublic = /^\/receipts\/[0-9a-fA-F]+\/report$/.test(url.pathname) || url.pathname === '/.well-known/agent-card.json'
+      if (deps.apiKey && url.pathname !== '/health' && !isPublic && req.headers['x-console-key'] !== deps.apiKey) throw new HttpError(401, 'x-console-key required')
+      const paymentHeader = req.headers['x-payment']
+      const accept = String(req.headers['accept'] ?? '')
+      const out = await handle({
+        path: url.pathname.replace(/\/+$/, '') || '/',
+        query: url.searchParams,
+        payment: typeof paymentHeader === 'string' && paymentHeader.length > 0 ? paymentHeader : undefined,
+        wantsHtml: accept.includes('text/html'),
+      })
+      if (out.contentType) send(out.status, String(out.body), out.contentType, out.headers ?? {})
+      else send(out.status, JSON.stringify(out.body), 'application/json; charset=utf-8', out.headers ?? {})
     } catch (err) {
       const status = err instanceof HttpError ? err.status : 500
       const message = err instanceof Error ? err.message : String(err)

@@ -6,14 +6,17 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { MemoryReceiptStore, record } from '../audit/index.js'
+import { MemoryExportLedger, MemoryReceiptStore, record } from '../audit/index.js'
 import type { Snapshot, VaultUniverse } from '../ixs/index.js'
 import { parseDecimalAmount, toAmount, type Vault, type VaultState } from '../ixs/schemas.js'
 import { evaluate } from '../mandate/evaluate.js'
 import { buildRuleSet, type CompiledRule } from '../mandate/schema.js'
 import type { PortfolioState, VaultFacts } from '../mandate/types.js'
+import { renderReport } from '../audit/report.js'
+import type { PaymentRequirements } from 'x402/types'
+import type { IdentityFacts, ServiceFacts } from '../monetize/service.js'
 import { createConsoleHandler, type ConsoleDeps } from './api.js'
-import { mandateView, segmentSource, splitClauses, type ChainRowView, type MandateView, type ReceiptView, type StatsView, type VaultsView } from './view.js'
+import { mandateView, segmentSource, splitClauses, type ChainRowView, type MandateView, type ReceiptView, type SalesView, type StatsView, type VaultsView } from './view.js'
 
 const usdc = (n: number | string) => parseDecimalAmount(String(n), 6)
 const WALLET = '0x1111111111111111111111111111111111111111'
@@ -104,16 +107,31 @@ function deps(store: ConsoleDeps['store'], over: Partial<ConsoleDeps> = {}): Con
   }
   return {
     store,
+    ledger: new MemoryExportLedger(),
+    origin: 'https://agent.example',
     universe: async () => universe,
     vaultState: async (id) => state(VAULTS.find((v) => v.id === id)!),
     telegram: () => ({ state: 'polling', username: 'mandaeteBot', lastPollAt: null, lastError: null }),
+    // Hermetic: the real ones read .env and preflight the platform.
+    service: async () => ({
+      price: '0.50',
+      currency: 'USDC',
+      network: 'base-sepolia',
+      testnet: true,
+      payTo: '0xEAbc8679638213F952B982dE4e03482B15C77B13',
+      payToUrl: 'https://sepolia.basescan.org/address/0xEAbc8679638213F952B982dE4e03482B15C77B13',
+      asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+      facilitator: 'https://x402.org/facilitator',
+      openserv: { listed: false, triggerUrl: null, paywallUrl: null, workflowId: null, name: null, price: null, active: null, checkedAt: null },
+    }),
+    identity: () => ({ registered: false, agentId: null, chainId: null, txHash: null, txUrl: null, cardUrl: null, scanUrl: null }),
     ...over,
   }
 }
 
-const call = async <T>(h: ReturnType<typeof createConsoleHandler>, path: string, query = '') => {
-  const out = await h({ path, query: new URLSearchParams(query) })
-  return { status: out.status, body: out.body as T, contentType: out.contentType }
+const call = async <T>(h: ReturnType<typeof createConsoleHandler>, path: string, query = '', extra: { payment?: string; wantsHtml?: boolean } = {}) => {
+  const out = await h({ path, query: new URLSearchParams(query), ...extra })
+  return { status: out.status, body: out.body as T, contentType: out.contentType, headers: out.headers }
 }
 
 // ------------------------------------------------------------------ view
@@ -186,7 +204,7 @@ test('GET /receipts, /stats, /mandate, /health', async () => {
   assert.ok(refused.rows.every((r) => r.verdict === 'REFUSE'))
 
   const stats = (await call<StatsView>(h, '/stats')).body
-  assert.deepEqual(stats, { receipts: 4, refused: 3, allowed: 1, breaks: 0, head: mainnet.id, signedTxns: 0 })
+  assert.deepEqual(stats, { receipts: 4, refused: 3, allowed: 1, breaks: 0, head: mainnet.id, signedTxns: 0, sold: 0, earned: '0.000000', currency: 'USDC', recent: [] })
 
   const mandate = (await call<{ empty: boolean; mandate: MandateView; receiptId: string }>(h, '/mandate')).body
   assert.equal(mandate.empty, false)
@@ -203,9 +221,10 @@ test('GET /receipts, /stats, /mandate, /health', async () => {
   assert.equal(verify.verify.ok, true)
   assert.equal(verify.replay.reproduced, true)
 
-  const report = await call<string>(h, `/receipts/${allow.id}/report`)
-  assert.match(report.contentType ?? '', /markdown/)
-  assert.ok(report.body.includes(allow.id))
+  const preview = await call<string>(h, `/receipts/${allow.id}/report`, 'preview=1')
+  assert.match(preview.contentType ?? '', /markdown/)
+  assert.ok(preview.body.includes(allow.id))
+  assert.ok(preview.body.includes('The full report is 0.50 USDC over x402.'), 'the free part says it is a preview')
 })
 
 test('GET /vaults — five vaults, five chains, a failed state read degrades one row', async () => {
@@ -241,4 +260,81 @@ test('empty store: /mandate says so, /receipts is [], unknown ids and routes are
   await assert.rejects(call(h, '/receipts/abcdef123456'), /no receipt matches/)
   await assert.rejects(call(h, '/receipts/ab'), /6–64 hex/)
   await assert.rejects(call(h, '/nope'), /no route/)
+})
+
+// ---------------------------------------------------------------- paywall
+
+test('the report is behind x402: 402 without payment, the file after settlement, never on a maybe', async () => {
+  const { store, allow } = seeded()
+  const ledger = new MemoryExportLedger()
+
+  // 1. no payment -> the challenge, with our real requirements
+  const gated = createConsoleHandler(deps(store, { ledger }))
+  const challenge = await call<{ x402Version: number; accepts: PaymentRequirements[]; error: string }>(gated, `/receipts/${allow.id}/report`)
+  assert.equal(challenge.status, 402)
+  const req = challenge.body.accepts[0]!
+  assert.equal(req.network, 'base-sepolia')
+  assert.equal(req.scheme, 'exact')
+  assert.equal(req.maxAmountRequired, '500000', '0.50 USDC in 6dp base units')
+  assert.equal(req.asset, '0x036CbD53842c5426634e7929541eC2318f3dCF7e')
+  assert.equal(req.payTo, '0xEAbc8679638213F952B982dE4e03482B15C77B13')
+  assert.equal(req.resource, `https://agent.example/receipts/${allow.id}/report`)
+  assert.equal(req.mimeType, 'text/markdown')
+  assert.equal(ledger.count(), 0)
+
+  // a browser gets the pay page instead of JSON
+  const page = await call<string>(gated, `/receipts/${allow.id}/report`, '', { wantsHtml: true })
+  assert.equal(page.status, 402)
+  assert.match(page.contentType ?? '', /text\/html/)
+
+  // 2. settled -> the whole file, byte-for-byte, and exactly one sale
+  const paid = createConsoleHandler(
+    deps(store, { ledger, settle: async () => ({ kind: 'paid', txHash: '0xfeed', payer: '0xbuyer', network: 'base-sepolia' }) }),
+  )
+  const sold = await call<string>(paid, `/receipts/${allow.id}/report`, '', { payment: 'header' })
+  assert.equal(sold.status, 200)
+  assert.equal(sold.body, renderReport(store.get(allow.id)!), 'the buyer gets renderReport verbatim')
+  assert.ok(sold.headers?.['X-PAYMENT-RESPONSE'], 'settlement is reported back in the header')
+  assert.equal(ledger.count(), 1)
+  assert.equal(ledger.earned(), '0.500000')
+  assert.equal(ledger.list()[0]?.rail, 'x402-sepolia')
+  assert.equal(ledger.list()[0]?.txHash, '0xfeed')
+
+  // 3. a bad payment -> 402 again with the reason, no sale
+  const bad = createConsoleHandler(deps(store, { ledger, settle: async () => ({ kind: 'invalid', reason: 'insufficient_funds' }) }))
+  const rejected = await call<{ error: string }>(bad, `/receipts/${allow.id}/report`, '', { payment: 'header' })
+  assert.equal(rejected.status, 402)
+  assert.equal(rejected.body.error, 'insufficient_funds')
+  assert.equal(ledger.count(), 1, 'still one sale')
+
+  // 4. facilitator unreachable -> 503, never a free file
+  const down = createConsoleHandler(deps(store, { ledger, settle: async () => ({ kind: 'facilitator-down', reason: 'fetch failed' }) }))
+  await assert.rejects(call(down, `/receipts/${allow.id}/report`, '', { payment: 'header' }), /could not reach the x402 facilitator/)
+  assert.equal(ledger.count(), 1, 'an outage never sells or gives away a report')
+})
+
+test('GET /x402 and /stats report the business honestly', async () => {
+  const { store, allow } = seeded()
+  const ledger = new MemoryExportLedger()
+  const h = createConsoleHandler(deps(store, { ledger }))
+
+  const before = (await call<{ service: ServiceFacts; identity: IdentityFacts; sales: SalesView }>(h, '/x402')).body
+  assert.equal(before.service.price, '0.50')
+  assert.equal(before.service.network, 'base-sepolia')
+  assert.equal(before.service.testnet, true)
+  assert.equal(before.service.payTo, '0xEAbc8679638213F952B982dE4e03482B15C77B13')
+  assert.match(before.service.facilitator, /x402\.org/)
+  assert.equal(before.service.openserv.listed, false, 'not listed until provision writes the trigger url')
+  assert.equal(before.identity.registered, false, 'an unregistered identity says so')
+  assert.deepEqual({ sold: before.sales.sold, earned: before.sales.earned }, { sold: 0, earned: '0.000000' })
+
+  ledger.record({ receiptId: allow.id, rail: 'x402-sepolia', txHash: '0xabc', payer: '0xbuyer', price: '0.50', network: 'base-sepolia' })
+  const after = (await call<{ sales: SalesView }>(h, '/x402')).body
+  assert.equal(after.sales.sold, 1)
+  assert.equal(after.sales.earned, '0.500000')
+  assert.equal(after.sales.recent[0]?.txUrl, 'https://sepolia.basescan.org/tx/0xabc')
+
+  const stats = (await call<StatsView & SalesView>(h, '/stats')).body
+  assert.equal(stats.sold, 1)
+  assert.equal(stats.receipts, 4)
 })

@@ -15,6 +15,7 @@ import type { RuleSet } from '../mandate/schema.js'
 
 export * from './receipt.js'
 export * from './store.js'
+export * from './exports.js'
 export { renderReport } from './report.js'
 
 let defaultStore: FileReceiptStore | null = null

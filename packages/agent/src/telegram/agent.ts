@@ -9,7 +9,7 @@
 
 import { Agent } from '@openserv-labs/sdk'
 import { z } from 'zod'
-import { getReceipt, help, proposeAction, setMandate, vaultStatus, type CapabilityDeps } from './capabilities.js'
+import { exportReport, getReceipt, help, proposeAction, setMandate, vaultStatus, type CapabilityDeps } from './capabilities.js'
 
 export const AGENT_NAME = 'Mandate'
 export const AGENT_DESCRIPTION =
@@ -97,6 +97,20 @@ export function createMandateAgent(opts: AgentOptions = {}): Agent {
     inputSchema: z.object({}),
     async run() {
       return help()
+    },
+  })
+
+  // The paid service (x402 workflow `mandate-audit-report`). Not a Telegram intent:
+  // the bot's `receipt <id>` already verifies and replays for free.
+  agent.addCapability({
+    name: 'export_report',
+    description:
+      'Return the full audit report for one receipt, as byte-stable Markdown. Use only when a buyer has paid for a report. Relay the output verbatim: it is a document, not a summary.',
+    inputSchema: z.object({
+      receiptId: z.string().describe('The receipt id, or any unique prefix of it, exactly as the buyer supplied it.'),
+    }),
+    async run({ args }) {
+      return exportReport(args, deps)
     },
   })
 
