@@ -18,7 +18,7 @@ import type { RuleType } from '../mandate/schema.js'
 import { agentCard } from '../monetize/agent-card.js'
 import { identityFacts, paywallPage, serviceFacts } from '../monetize/service.js'
 import { paymentResponseHeader, reportRequirements, settlementOf, X402_VERSION, type Settlement } from '../monetize/x402.js'
-import { chainRowView, mandateView, receiptView, salesView, statsView, tallyFired, vaultsView, type ChainRowView } from './view.js'
+import { chainRowView, historyView, mandateView, receiptView, salesView, statsView, tallyFired, vaultsView, type ChainRowView } from './view.js'
 
 export interface ConsoleDeps {
   store: ReceiptStore & { resolve?: (prefix: string) => string | null }
@@ -133,7 +133,11 @@ export function createConsoleHandler(deps: ConsoleDeps): ConsoleHandler {
 
     if (path === '/stats') {
       const rows = deps.store.list({ limit: MAX_LIST })
-      return json({ ...statsView(rows, deps.store.verifyChain(), deps.store.head()), ...salesView(deps.ledger) })
+      return json({
+        ...statsView(rows, deps.store.verifyChain(), deps.store.head()),
+        ...salesView(deps.ledger),
+        history: historyView(loadAll(deps.store), now()),
+      })
     }
 
     if (path === '/receipts') {

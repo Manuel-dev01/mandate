@@ -462,3 +462,80 @@ export function salesView(ledger: ExportLedger, limit = 5): SalesView {
     })),
   }
 }
+
+// ---------------------------------------------------------------- history
+
+export interface HistoryBucket {
+  /** ISO start of the bucket. */
+  readonly at: string
+  readonly allowed: number
+  readonly refused: number
+}
+
+export interface HistoryView {
+  /** 'hour' while the whole chain is younger than a day, else 'day'. */
+  readonly grain: 'hour' | 'day'
+  readonly buckets: readonly HistoryBucket[]
+  readonly total: number
+  readonly allowed: number
+  readonly refused: number
+  readonly firstAt: string | null
+  readonly lastAt: string | null
+  /** Which rules have refused the most, most-cited first. Only rules that fired. */
+  readonly byRule: readonly { code: string; type: RuleType; label: string; fired: number }[]
+}
+
+const HOUR = 3_600_000
+const DAY = 86_400_000
+
+/**
+ * The decision chain over time — our own data, always current, unlike the vault
+ * subgraphs (RECON §6.17). Pure: the caller supplies the receipts and the clock.
+ */
+export function historyView(receipts: readonly Receipt[], now: Date = new Date()): HistoryView {
+  const times = receipts.map((r) => new Date(r.createdAt).getTime()).filter((t) => Number.isFinite(t))
+  const firstMs = times.length ? Math.min(...times) : null
+  const lastMs = times.length ? Math.max(...times) : null
+  const span = firstMs === null ? 0 : (lastMs as number) - firstMs
+  const grain: 'hour' | 'day' = span < DAY ? 'hour' : 'day'
+  const size = grain === 'hour' ? HOUR : DAY
+
+  const floor = (ms: number) => Math.floor(ms / size) * size
+  const counts = new Map<number, { allowed: number; refused: number }>()
+  for (const r of receipts) {
+    const t = new Date(r.createdAt).getTime()
+    if (!Number.isFinite(t)) continue
+    const key = floor(t)
+    const cell = counts.get(key) ?? { allowed: 0, refused: 0 }
+    if (r.decision.verdict === 'REFUSE') cell.refused += 1
+    else cell.allowed += 1
+    counts.set(key, cell)
+  }
+
+  // Empty buckets are real information — a quiet Tuesday should look quiet.
+  const buckets: HistoryBucket[] = []
+  if (firstMs !== null) {
+    for (let t = floor(firstMs); t <= floor(Math.max(lastMs as number, now.getTime())); t += size) {
+      const cell = counts.get(t) ?? { allowed: 0, refused: 0 }
+      buckets.push({ at: new Date(t).toISOString(), allowed: cell.allowed, refused: cell.refused })
+    }
+  }
+
+  const fired = tallyFired(receipts)
+  const byRule = (Object.entries(fired) as [RuleType, number][])
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, n]) => ({ code: ruleCode(type), type, label: ruleLabel(type), fired: n }))
+
+  const refused = receipts.filter((r) => r.decision.verdict === 'REFUSE').length
+  return {
+    grain,
+    buckets,
+    total: receipts.length,
+    allowed: receipts.length - refused,
+    refused,
+    firstAt: firstMs === null ? null : new Date(firstMs).toISOString(),
+    lastAt: lastMs === null ? null : new Date(lastMs).toISOString(),
+    byRule,
+  }
+}

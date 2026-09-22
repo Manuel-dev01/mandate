@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { api, type ChainRowView, type StatsView } from '@/lib/api'
+import { History } from '@/components/history'
 import { NoReceipts, PageHead, Unreachable } from '@/components/panels'
 import { utcTime, verdictWord } from '@/lib/format'
 import { delay } from '@/lib/motion'
@@ -72,6 +73,15 @@ export default async function ChainPage({ searchParams }: { searchParams: Promis
                 <span>{recent[recent.length - 1]?.short}</span>
               </div>
             </>
+          ) : null}
+
+          {s.history && s.history.total > 0 ? (
+            <div className="rise" style={{ marginBottom: 40, ...delay(0, 0, 250) }}>
+              <div className="label" style={{ marginBottom: 16 }}>
+                Every decision, over time
+              </div>
+              <History history={s.history} />
+            </div>
           ) : null}
 
           <div className="scroll-x">

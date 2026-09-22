@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { api, type ChainRowView, type ReceiptView, type StatsView, type X402View } from '@/lib/api'
 import { MandateProse } from '@/components/checks'
+import { History } from '@/components/history'
 import { Card, Stat, Unreachable } from '@/components/panels'
 import { PaperReceipt } from '@/components/paper-receipt'
 import { TelegramBlock, TelegramIcon } from '@/components/telegram'
@@ -62,6 +63,11 @@ export default async function Landing() {
             <Stat label="Reports sold" value={stats.data.sold ?? 0} />
             <Stat label="Signed txns" value={stats.data.signedTxns} />
           </div>
+          {stats.data.history && stats.data.history.total > 0 ? (
+            <div style={{ marginTop: 40 }}>
+              <History history={stats.data.history} compact />
+            </div>
+          ) : null}
         </div>
       ) : null}
 

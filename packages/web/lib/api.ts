@@ -155,6 +155,23 @@ export interface ChainRowView {
   hasMessage: boolean
 }
 
+export interface HistoryBucket {
+  at: string
+  allowed: number
+  refused: number
+}
+
+export interface HistoryView {
+  grain: 'hour' | 'day'
+  buckets: HistoryBucket[]
+  total: number
+  allowed: number
+  refused: number
+  firstAt: string | null
+  lastAt: string | null
+  byRule: { code: string; type: string; label: string; fired: number }[]
+}
+
 export interface StatsView {
   receipts: number
   refused: number
@@ -164,6 +181,7 @@ export interface StatsView {
   signedTxns: 0
   sold: number
   earned: string
+  history: HistoryView
 }
 
 export interface VaultRowView {

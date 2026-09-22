@@ -16,7 +16,7 @@ import { renderReport } from '../audit/report.js'
 import type { PaymentRequirements } from 'x402/types'
 import type { IdentityFacts, ServiceFacts } from '../monetize/service.js'
 import { createConsoleHandler, type ConsoleDeps } from './api.js'
-import { mandateView, segmentSource, splitClauses, type ChainRowView, type MandateView, type ReceiptView, type SalesView, type StatsView, type VaultsView } from './view.js'
+import { historyView, mandateView, segmentSource, splitClauses, type ChainRowView, type MandateView, type ReceiptView, type SalesView, type StatsView, type VaultsView } from './view.js'
 
 const usdc = (n: number | string) => parseDecimalAmount(String(n), 6)
 const WALLET = '0x1111111111111111111111111111111111111111'
@@ -203,8 +203,10 @@ test('GET /receipts, /stats, /mandate, /health', async () => {
   assert.equal(refused.rows.length, 2)
   assert.ok(refused.rows.every((r) => r.verdict === 'REFUSE'))
 
-  const stats = (await call<StatsView>(h, '/stats')).body
-  assert.deepEqual(stats, { receipts: 4, refused: 3, allowed: 1, breaks: 0, head: mainnet.id, signedTxns: 0, sold: 0, earned: '0.000000', currency: 'USDC', recent: [] })
+  const stats = (await call<StatsView & SalesView & { history: { total: number; refused: number } }>(h, '/stats')).body
+  const { history, ...counts } = stats
+  assert.deepEqual(counts, { receipts: 4, refused: 3, allowed: 1, breaks: 0, head: mainnet.id, signedTxns: 0, sold: 0, earned: '0.000000', currency: 'USDC', recent: [] })
+  assert.deepEqual({ total: history.total, refused: history.refused }, { total: 4, refused: 3 }, '/stats carries the decision history')
 
   const mandate = (await call<{ empty: boolean; mandate: MandateView; receiptId: string }>(h, '/mandate')).body
   assert.equal(mandate.empty, false)
@@ -337,4 +339,42 @@ test('GET /x402 and /stats report the business honestly', async () => {
   const stats = (await call<StatsView & SalesView>(h, '/stats')).body
   assert.equal(stats.sold, 1)
   assert.equal(stats.receipts, 4)
+})
+
+test('historyView buckets the chain by its own span, and empty periods stay visible', () => {
+  const { store } = seeded()
+  const all = store.list({ limit: 100 }).map((e) => store.get(e.id)!)
+
+  // Four receipts made in the same test run: minutes apart, so the grain is hourly.
+  const tight = historyView(all, new Date(all[0]!.createdAt))
+  assert.equal(tight.grain, 'hour')
+  assert.equal(tight.total, 4)
+  assert.equal(tight.refused, 3)
+  assert.equal(tight.allowed, 1)
+  assert.equal(tight.buckets.reduce((a, b) => a + b.allowed + b.refused, 0), 4, 'every decision lands in a bucket')
+  assert.equal(tight.byRule[0]?.code, 'CON-01', 'the most-cited rule comes first')
+  assert.ok(tight.byRule.every((r) => r.fired > 0), 'rules that never fired are left out')
+  assert.equal(tight.firstAt, all[all.length - 1]!.createdAt)
+
+  // A chain that spans days switches grain and keeps the quiet days in the middle.
+  const spread = all.map((r, i) => ({ ...r, createdAt: new Date(Date.UTC(2026, 8, 1 + i * 2)).toISOString() }))
+  const wide = historyView(spread, new Date(Date.UTC(2026, 8, 7)))
+  assert.equal(wide.grain, 'day')
+  assert.equal(wide.buckets.length, 7, 'six days spanned, inclusive — the empty days are there')
+  assert.deepEqual(
+    wide.buckets.map((b) => b.allowed + b.refused),
+    [1, 0, 1, 0, 1, 0, 1],
+  )
+
+  const empty = historyView([], new Date())
+  assert.deepEqual({ ...empty, buckets: empty.buckets.length, byRule: empty.byRule.length }, {
+    grain: 'hour',
+    buckets: 0,
+    total: 0,
+    allowed: 0,
+    refused: 0,
+    firstAt: null,
+    lastAt: null,
+    byRule: 0,
+  })
 })
