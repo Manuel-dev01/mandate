@@ -166,6 +166,10 @@ scripts/        smoke.mjs (live integrations) · web-smoke.mjs (API + console ro
 
 Tests: `*.unit.test.ts` never touch the network; `*.integration.test.ts` hit live IXS/SERV/RPC and cost a few `gpt-5.4-mini` calls. Rehearsal: `npm run act -- deposit 5000` (ALLOW → receipt), `npm run act -- deposit 50000 --message "…"` (REFUSE → receipt), `npm run receipt -- list|show|verify|replay|export`.
 
+**Two rails, one document.** The report sells through our own x402 on Base Sepolia (the demo path) and through OpenServ's x402 marketplace, where their rail settles USDC on Base **mainnet**. Both are fulfilled by the same agent and return byte-identical bytes — verified 22 Sep (RECON §6.17). Say which rail is which; never blur them.
+
+**The console is checked at phone width.** Tables fold into two columns under 720px rather than scrolling sideways, because the actual-vs-limit numbers are the demo. `node scripts/overflow-check.mjs` asserts it.
+
 **The report is the product, and it is paid for.** `GET /receipts/:id/report` answers **402** with x402 terms (Base Sepolia USDC, payee = the ERC-8004 identity wallet) and serves the file only after the facilitator settles; `?preview=1` is 40 labelled lines and the only free path — the console key does not unlock it. A settlement writes one line to `exports.jsonl`, and that is the only thing the console's "reports sold" counts. OpenServ x402 settles **Base mainnet** and its trigger endpoints were timing out on 22 Sep, so the listing is a listing and our own paywall is the demo (RECON §6.15).
 
 **Deploy shape (live 22 Sep).** Console `https://mandate-console-five.vercel.app`, agent `https://agent-production-d238.up.railway.app` (RECON §6.14 has ids and what bit). Railway runs `bin/serve.ts` (bot + API) as **one** replica with a volume at `/data` (`RECEIPTS_DIR`, `MANDATES_DIR`, `SNAPSHOT_DIR`, `COMPILE_CACHE_DIR`); two pollers make Telegram answer `Conflict`. Vercel runs `packages/web` with `MANDATE_API_URL`. Nothing on the console is seeded: every receipt was made in Telegram.

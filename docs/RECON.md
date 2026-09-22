@@ -413,6 +413,22 @@ Railway emailed **"Deploy Crashed!"** after ordinary redeploys. The container ra
 
 `scripts/watch-deploys.mjs` polls both deployments and prints only state changes: the agent's `/health` (Telegram poller state, receipts, uptime), the console's root, and the ledger (`receipts · sold · chain breaks`). `MANDATE_API_KEY` is needed for the ledger line; `/health` never is.
 
+### 6.17 D10: the phone, the charts, the second rail, and three drills (22 Sep 2026)
+
+**The console on a phone.** Screenshots taken without mobile emulation made it look as if every page overflowed; with `Emulation.setDeviceMetricsOverride` the pages fit — the viewport meta is present and correct. The real fault was narrower and worse for the demo: each table sits in a `.scroll-x` wrapper with a fixed `minWidth` (checks 640, chain 820, vaults 860, mandate 480), so **on a phone the actual-vs-limit column lived off-screen behind a sideways swipe** — beat 3 showed rule names with no numbers. Fixed by folding every `.trow` into two columns under 720 px and dropping the fixed widths; `scripts/overflow-check.mjs` drives Chrome over CDP to assert `scrollWidth === clientWidth` on every route and names the offenders when it does not.
+
+**The vault charts were cut, and why.** The Goldsky subgraphs are live but the data is not: the ERC-7540 subgraphs expose `navUpdates` (price per share, dense every ~4 min) that **stop ~22 days ago** on Fuji, and the BSC vault — the demo's own — uses a different schema entirely (`vaultStats`, `vaultActivity`, no time series) whose **last on-chain activity was 61 days ago**. A vault-history chart renders an honest flat line ending weeks back. Replaced with `historyView`: our decision chain over time, bucketed hourly while the chain is young and daily once it spans a day, plus a tally of which rules have actually refused. Always current, and it argues the product.
+
+**The OpenServ rail is real, and fulfilled by us.** `OPENSERV_API_KEY` set on Railway; the SDK tunnel connects from the container (`Agent connected to OpenServ proxy`, `/health` → `openserv.state: connected`). Firing trigger `b03cd363…` on workflow **13897** with `{receiptId}` produced task **734536 → done**, whose output is the audit report: **3,998 chars, byte-identical (after trim) to the 3,999 the x402 paywall serves**. So both rails sell the same document and the same agent answers. Note their rail settles USDC on **Base mainnet** while ours settles Base Sepolia, and the platform overrides the payee with the workspace wallet — the console states each precisely rather than blurring them.
+
+**Failure drills, run locally against the same code (production untouched):**
+
+| Drill | Result |
+|---|---|
+| x402 facilitator pointed at a dead host, then a real payment attempted | **503**, `nothing was charged; please retry`, **no report served and no sale recorded** — the ledger stayed at 1 |
+| IXS pointed at a dead host, `/vaults` read | 5 vaults served from **disk**, `stale: true`, real `fetchedAt` — no error screen |
+| A full decision with IXS unreachable | Six rules pass on the stale snapshot; **`whitelist_required` refuses — "could not verify"** — because it is never cached. Facts marked STALE, verdict REFUSE, and the explanation says exactly why |
+
 ---
 
 ## 7. Sources

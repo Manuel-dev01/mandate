@@ -103,7 +103,7 @@ export default async function ExportPage({ params }: { params: Promise<{ id: str
                 <Row k="Facilitator" v={svc.facilitator.replace(/^https?:\/\//, '')} />
                 <Row
                   k="Also listed"
-                  v={svc.openserv.listed ? `OpenServ${svc.openserv.name ? ` · ${svc.openserv.name}` : ''}${svc.openserv.price ? ` · ${svc.openserv.price} USDC` : ''}` : 'OpenServ · not listed yet'}
+                  v={svc.openserv.listed ? `OpenServ x402${svc.openserv.active ? ' · active' : ''}${svc.openserv.price ? ` · ${svc.openserv.price} USDC` : ''}` : 'OpenServ · not listed yet'}
                   href={svc.openserv.paywallUrl ?? svc.openserv.triggerUrl}
                 />
               </div>
@@ -111,9 +111,14 @@ export default async function ExportPage({ params }: { params: Promise<{ id: str
               <a href={buyUrl} className="btn primary" style={{ display: 'inline-block', marginBottom: 16 }}>
                 Buy the report · {Number(svc.price).toFixed(2)} USDC
               </a>
-              <p className="prose muted" style={{ marginBottom: 32 }}>
+              <p className="prose muted" style={{ marginBottom: 12 }}>
                 The link answers <span className="ink-3">402 Payment Required</span> with the x402 terms above and opens a pay page for your wallet. Pay {svc.testnet ? 'faucet ' : ''}USDC on {svc.network}; the file is served the moment the facilitator settles, and the sale is recorded below with its transaction.
               </p>
+              {svc.openserv.listed ? (
+                <p className="prose muted" style={{ marginBottom: 32 }}>
+                  The same report is sold on OpenServ&rsquo;s x402 marketplace, where their rail settles in USDC on Base mainnet. Either way the same agent answers and the document is byte-identical.
+                </p>
+              ) : null}
 
               <div className="label" style={{ marginBottom: 16 }}>
                 Sales
