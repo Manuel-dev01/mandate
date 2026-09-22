@@ -41,6 +41,10 @@ const KEYS = [
   'SNAPSHOT_DIR',
   'MANDATES_DIR',
   'TELEGRAM_BOT_TOKEN',
+  'COMPILE_CACHE_DIR',
+  'PORT',
+  'CONSOLE_API_KEY',
+  'X402_PRICE_USDC',
 ] as const
 
 /**
@@ -100,6 +104,14 @@ const EnvSchema = z.object({
   MANDATES_DIR: z.string().min(1).optional(),
   /** Direct Telegram bot (from @BotFather). Read only by bin/bot.ts. Never logged. */
   TELEGRAM_BOT_TOKEN: z.string().regex(/^\d+:[A-Za-z0-9_-]{30,}$/, 'TELEGRAM_BOT_TOKEN must look like 123456789:AA…').optional(),
+  /** Compiled rule sets, keyed by mandate text hash. On Railway, point it at the volume. */
+  COMPILE_CACHE_DIR: z.string().min(1).optional(),
+  /** The console API (bin/serve.ts). Railway injects PORT. */
+  PORT: z.coerce.number().int().positive().default(8787),
+  /** Optional shared secret the web console sends as x-console-key. The data is public either way. */
+  CONSOLE_API_KEY: z.string().min(8).optional(),
+  /** Shown on the export page now; charged by x402 from D9. */
+  X402_PRICE_USDC: z.string().regex(/^\d+(\.\d{1,6})?$/).default('0.50'),
 })
 
 const parsed = EnvSchema.parse(present())
@@ -112,7 +124,7 @@ export const env = Object.freeze({
   RECEIPTS_DIR: parsed.RECEIPTS_DIR ?? join(REPO_ROOT, 'data', 'receipts'),
   SNAPSHOT_DIR: parsed.SNAPSHOT_DIR ?? join(REPO_ROOT, '.snapshots'),
   /** Compiled rule sets, keyed by mandate text hash. */
-  COMPILE_CACHE_DIR: join(REPO_ROOT, 'packages', 'agent', '.cache'),
+  COMPILE_CACHE_DIR: parsed.COMPILE_CACHE_DIR ?? join(REPO_ROOT, 'packages', 'agent', '.cache'),
 })
 
 export type Env = typeof env

@@ -17,5 +17,9 @@
     "dev:web": "npm run dev --workspace=web",
     "test": "npm run test --workspace=agent",
     "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
   }
 }

@@ -143,8 +143,10 @@ packages/agent/src/
   ixs/      IXS MCP + REST client — the ONLY module that talks to IXS
   mandate/  plain-English -> rule set, and the compliance evaluator (core IP)
   audit/    decision receipts: inputs, rules fired, verdict, hash
-packages/web/   Next.js audit console (the hero surface)
-scripts/        smoke.mjs — zero-dependency integration verification
+  telegram/ the bot (demo surface) + the handlers' exact wording
+  console/  view models + the read-only JSON API the web renders (same process as the bot: bin/serve.ts)
+packages/web/   Next.js audit console — a renderer of the console API, no agent code, no disk, no IXS
+scripts/        smoke.mjs (live integrations) · web-smoke.mjs (API + console routes)
 ```
 
 ### Build status (16 Sep)
@@ -158,9 +160,12 @@ scripts/        smoke.mjs — zero-dependency integration verification
 | `telegram/` | `capabilities.ts` (five handlers returning exact text), **`bot.ts` + `parse.ts` (direct Bot API long-poll, deterministic intent parser — the demo surface, `npm run bot`)**, `agent.ts` (the same handlers as an OpenServ Agent, route-never-decide prompt), `mandates.ts` (per-chat store); `bin/bot.ts`, `bin/provision.ts`, `bin/agent.ts` | D6 ✅ direct bot is primary (RECON §6.12); OpenServ route optional — their Telegram integration form was failing on 21 Sep |
 | `ixs/` snapshots | `LastGood` memory + disk (`.snapshots/`), bigint-safe JSON; `fetchUniverse` fails on a REST wobble so the universe never shrinks to MCP's 1-of-5 (RECON §6.13) | D6 ✅ cold start degrades with STALE |
 | `signer/`, `execute/` | one signing module with guardrails; plan → run → status | D4 — **dormant**, not on the product surface |
-| `packages/web/` | console | D7–D8 |
+| `console/` | `view.ts` (labels, codes `CON-01`…`CLR-07`, segments, pretty amounts — reuses `telegram/present.ts`), `api.ts` (GET-only), `bin/serve.ts` | D7 ✅ |
+| `packages/web/` | landing · `/chain` · `/receipts/[id]` (verify/replay) · `/mandate` · `/vaults` · `/export/[id]`; every page has empty / loading / unreachable states | D8 ✅ |
 
 Tests: `*.unit.test.ts` never touch the network; `*.integration.test.ts` hit live IXS/SERV/RPC and cost a few `gpt-5.4-mini` calls. Rehearsal: `npm run act -- deposit 5000` (ALLOW → receipt), `npm run act -- deposit 50000 --message "…"` (REFUSE → receipt), `npm run receipt -- list|show|verify|replay|export`.
+
+**Deploy shape (live 22 Sep).** Console `https://mandate-console-five.vercel.app`, agent `https://agent-production-d238.up.railway.app` (RECON §6.14 has ids and what bit). Railway runs `bin/serve.ts` (bot + API) as **one** replica with a volume at `/data` (`RECEIPTS_DIR`, `MANDATES_DIR`, `SNAPSHOT_DIR`, `COMPILE_CACHE_DIR`); two pollers make Telegram answer `Conflict`. Vercel runs `packages/web` with `MANDATE_API_URL`. Nothing on the console is seeded: every receipt was made in Telegram.
 
 **The OpenServ runtime LLM routes; it never decides.** The Telegram capabilities return the exact text to relay; the system prompt in `telegram/agent.ts` forbids adding, softening or inventing a verdict. If the runtime ever paraphrases a verdict, tighten the reply format — never move the verdict into the model.
 

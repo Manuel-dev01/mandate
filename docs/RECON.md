@@ -323,6 +323,30 @@ First live Telegram rehearsal: after four correct beats, "Deposit 5,000 USDC int
 
 Fix: `fetchUniverse()` throws when REST rejects or returns no items, so `LastGood` serves the last good five-vault universe with the STALE badge. MCP failure alone stays non-fatal. Pinned in `ixs/universe.unit.test.ts`. The bot's replies are rendered as Telegram HTML at the send edge (`telegram/format.ts`: bold headline, monospace hashes and rule types, italic clauses, escaped input, plain-text fallback); handlers still return plain text.
 
+### 6.14 The console: a read-only API in the bot's process, rendered by Next.js (21 Sep 2026)
+
+Decisions with the user: everything on the console is real (no seeded receipts, no invented metrics — the design's `MDT-06`/`FRS-07`, APY column, "Base Sepolia" and "149 receipts" were replaced, not imitated); rule codes `CON-01 CHN-02 LIQ-03 ACT-04 PSE-05 NET-06 CLR-07` are a console-only device in DSL order; the agent runs on Railway (one replica — a second Telegram poller makes the Bot API answer `Conflict`, seen 21 Sep — with a volume at `/data` for receipts, mandates, snapshots and the compile cache) and the console on Vercel reading only `MANDATE_API_URL`.
+
+`console/api.ts`: GET-only over `node:http`, routes `/health /stats /receipts /receipts/:id /receipts/:id/verify /receipts/:id/report /mandate /vaults`, optional `x-console-key`. `console/view.ts` builds every view model from the receipt with the bot's own wording (`telegram/present.ts`, `telegram/format.ts`), so chat and console never disagree. "Fired" counts tally `citedRules` across the chain, memoised on the head id. `/vaults` reads `listVaults()` + `getVaultState()` per vault with `allSettled`; a failed read degrades that row, never the page.
+
+Verified locally 21 Sep on 14 real receipts: every route 200, `verify` + `replay` green on the head, `/vaults` live with TVLs from all five vaults (`IXHYB - Avalanche 6,304.473113 USDC`, `t_ix7540v1 343.811 USDC`, `IXHYB - Arc 19.2 USDC`, …).
+
+Console verified 22 Sep against the local agent: `scripts/web-smoke.mjs` green on all 8 API routes and 6 pages; every page degrades to the *agent unreachable* panel with the agent stopped, and to its empty state on an empty receipt store; `next build` passes with every route dynamic.
+
+**What bit:** `next build` failed prerendering `/404` with `Cannot read properties of null (reading 'useContext')`. Cause: `@openserv-labs/client → x402-fetch → x402 → wagmi → @tanstack/react-query` pulls **React 18.3.1 into the root `node_modules`**, and Next resolves `react` from the root, not from `packages/web/node_modules` (hiding the root copy turned the error into `Cannot find module 'react'`). Fix: `react@19.1.1` + `react-dom@19.1.1` as root devDependencies so the whole tree has one React. Vercel installs from the root lockfile, so the hoist is what makes the Vercel build pass too.
+
+**Deployed 22 Sep 2026.**
+
+| | |
+|---|---|
+| Agent (Railway) | `https://agent-production-d238.up.railway.app` — project `mandate` (`97b7d9f0…`), service `agent` (`4d3122a7…`), volume `agent-volume` at `/data`, 1 replica, healthcheck `/health`, `CONSOLE_API_KEY` set (the web sends `x-console-key`; `/health` is open) |
+| Console (Vercel) | `https://mandate-console-five.vercel.app` — project `mandate-console`, root `packages/web`, env `MANDATE_API_URL`, `MANDATE_API_KEY`, `NEXT_PUBLIC_TELEGRAM_URL` |
+| Bot | `@mandaeteBot` now polls from Railway; the local `serve` must stay stopped |
+
+What bit on Railway: (1) `railway.json` config-as-code is deprecated and was **ignored** — the first build ran Railpack and failed for want of a start command; the fix is `dockerfilePath: packages/agent/Dockerfile` on the service instance (set via the GraphQL API `serviceInstanceUpdate`; the `Builder` enum has no `DOCKERFILE` value, the path alone switches it). (2) CLI `railway volume add` panics (`volume.rs:836` unwrap on None) on a service with no deployment, on both 5.23 and 5.59; `volumeCreate` via the API works. (3) The moment the Railway instance came up, both pollers hit `Conflict` until the local one was stopped — exactly the one-instance rule. The Railway chain starts empty: nothing was copied from this machine; the first receipt on the deployed console is the first message sent to the deployed bot. Smoke against both: `API=… WEB=… MANDATE_API_KEY=… node scripts/web-smoke.mjs` → all green.
+
+**Presentation pass (22 Sep).** The base design's hero card was generic; the console now uses the product's own artifact as its visual system: a **paper receipt** (cream thermal paper, torn edge, grain, slight tilt) that prints the newest refusal row by row and stamps the verdict once (`components/paper-receipt.tsx`), and a **barcode derived from each receipt hash** (bar widths from the hex digits — `components/barcode.tsx`) on the hero, on every chain row, and above the hash block on the receipt page. The stamp reappears inline beside the receipt headline. A **"Where decisions are made"** section and the header/footer carry the Telegram icon + `@mandaeteBot`; every empty state shows the messages to send as chat bubbles with the Open button. Motion is one vocabulary (`globals.css`, `lib/motion.ts`, `app/template.tsx`): pages fade-rise on navigation, rows print top-to-bottom with a 30–70 ms stagger, the chain strip grows bar by bar, fired clauses ink in from the left, verify/replay results fade in, skeletons shimmer; everything is CSS, nothing loops except the header pulse, and `prefers-reduced-motion` disables all of it.
+
 ---
 
 ## 7. Sources

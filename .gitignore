@@ -28,3 +28,8 @@ data/openserv.json
 Thumbs.db
 .vscode/
 .idea/
+
+# web
+next-env.d.ts
+.vercel
+packages/web/tsconfig.tsbuildinfo

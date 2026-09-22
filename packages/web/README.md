@@ -1,14 +1,17 @@
-# web — Next.js audit console (D7/D8)
+# web — the Mandate audit console
 
-Scaffold on D7 with:
+A Next.js renderer of the agent's read-only console API (`packages/agent/src/console/api.ts`). It imports no agent code, touches no disk and calls no IXS endpoint: everything on screen is the API's JSON, which is built from real receipts made in Telegram.
 
 ```bash
-npx create-next-app@latest . --ts --app --tailwind --eslint --no-src-dir --use-npm
+# .env.local
+MANDATE_API_URL=http://localhost:8787     # or the Railway URL
+MANDATE_API_KEY=                          # only if the agent sets CONSOLE_API_KEY
+
+npm run dev --workspace=web               # http://localhost:3000
+node scripts/web-smoke.mjs                # from the repo root: every route answers with real data
 ```
 
-The hero screen is the **refusal detail view** (`docs/DEMO_SCRIPT.md`, beat 4):
-inputs, all seven predicates with actual-vs-limit, the user's originating phrase
-per rule, the shadow-agent validation pass, and the content hash.
+Routes: `/` (the newest refusal resolving row by row) · `/chain` · `/receipts/[id]` (verify + replay) · `/mandate` · `/vaults` · `/export/[id]`.
+Every page has an empty state (no receipts → open Telegram), a loading state, and an unreachable state (the agent is down → say so, never an error screen).
 
-Every view needs an empty, loading and error state. The console must never
-show a raw error — degrade to the cached snapshot with a staleness badge.
+Deploy on Vercel with **root directory `packages/web`** and `MANDATE_API_URL` set. The design tokens live in `app/globals.css`; the base design is `Mandate.dc.html` at the repo root.

@@ -65,7 +65,7 @@ Then push harder:
 
 ## Beat 4 — It proves it (1:45–2:15)
 
-Cut to the web console. Open the refusal receipt (`npm run receipt -- show <id>` until D7):
+Cut to the web console at `mandate-console-five.vercel.app` (`/` — the newest refusal is already resolving row by row on the landing hero; click it, or paste the id from the Telegram reply into `/receipts/<id>`):
 
 - Inputs, portfolio state (labelled `declared`), live vault state
 - All seven predicates with pass/fail and actual-vs-limit
@@ -73,7 +73,7 @@ Cut to the web console. Open the refusal receipt (`npm run receipt -- show <id>`
 - The SERV explanation with its trace: model, tokens, `serv_prompt_guard + serv_shadow_agent`
 - Three hashes: mandate, decision, receipt — and the previous receipt it chains to
 
-Re-run it (`npm run receipt -- replay <id>`): **identical verdict, identical hash.** The evaluator is pure and the receipt stores its exact inputs, so anyone can reproduce the decision.
+Press **VERIFY** (every hash re-derives) then **REPLAY**: **identical verdict, identical hash.** The evaluator is pure and the receipt stores its exact inputs, so anyone can reproduce the decision. The `/mandate` page shows the same clauses with how many refusals each has produced.
 
 **Scores:** user-readiness (it looks finished), revenue potential (this artifact is the product).
 
@@ -93,7 +93,7 @@ Click **Export audit report** → **x402 paywall** → pay 0.50 USDC → report 
 
 ## Beat 6 — Dual track (2:40–3:00)
 
-Switch the target to **IXHYB on Robinhood Chain**. The agent reads live mainnet vault state — then **refuses to deposit**, because `allowed_networks` is testnet-only.
+In Telegram: *"Deposit 1,000 into the Robinhood vault."* The agent reads live mainnet vault state — then **refuses**, because `allowed_networks` is testnet-only. On the console, `/vaults` shows the Robinhood row flagged mainnet with its live TVL and the running count of refusals into it.
 
 Close on the agent's **ERC-8004 identity** on 8004scan.io.
 

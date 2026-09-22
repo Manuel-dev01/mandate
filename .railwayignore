@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.git
+.env
+.env.*
+.openserv.json
+.snapshots
+.cache
+data
+packages/web
+packages/agent/.cache
+packages/agent/dist
+Mandate.dc.html

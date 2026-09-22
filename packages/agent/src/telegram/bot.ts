@@ -35,6 +35,13 @@ export class TelegramBot {
   private readonly pollSeconds: number
   private readonly lastAction = new Map<string, LastAction>()
   private offset = 0
+  /** For /health: what the poller is doing right now. */
+  status: { state: 'idle' | 'connecting' | 'polling' | 'stopped'; username: string | null; lastPollAt: string | null; lastError: string | null } = {
+    state: 'idle',
+    username: null,
+    lastPollAt: null,
+    lastError: null,
+  }
   private running = false
 
   constructor(private readonly opts: BotOptions) {
@@ -104,6 +111,7 @@ export class TelegramBot {
 
   async start(): Promise<void> {
     this.running = true
+    this.status = { ...this.status, state: 'connecting' }
     // A network blip at startup is not a reason to exit; a bad token is (Telegram answers 401, not a fetch error).
     let me: { id: number; username?: string } | null = null
     for (let attempt = 1; me === null; attempt++) {
@@ -117,12 +125,15 @@ export class TelegramBot {
         await new Promise((r) => setTimeout(r, wait))
       }
     }
+    this.status = { ...this.status, state: 'polling', username: me.username ?? String(me.id) }
     this.log(`bot @${me.username ?? me.id} polling · wallet ${this.deps.wallet}`)
     while (this.running) {
       let updates: Update[] = []
       try {
         updates = (await this.call('getUpdates', { offset: this.offset, timeout: this.pollSeconds, allowed_updates: ['message'] })) as Update[]
+        this.status = { ...this.status, lastPollAt: new Date().toISOString(), lastError: null }
       } catch (err) {
+        this.status = { ...this.status, lastError: err instanceof Error ? err.message : String(err) }
         this.log(`poll error: ${err instanceof Error ? err.message : String(err)} — retrying in 3s`)
         await new Promise((r) => setTimeout(r, 3000))
         continue
@@ -149,5 +160,6 @@ export class TelegramBot {
 
   stop(): void {
     this.running = false
+    this.status = { ...this.status, state: 'stopped' }
   }
 }

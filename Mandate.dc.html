@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+body { margin:0; background:#0b0d0c; }
+a { color:#e8ebe9; text-decoration:none; border-bottom:1px solid #3a4340; }
+a:hover { color:#fff; border-bottom-color:#8c9793; }
+@keyframes mResolve { 0%,4%{opacity:.16} 10%,90%{opacity:1} 100%{opacity:.16} }
+@keyframes mVerdict { 0%,46%{opacity:0;transform:translateY(8px)} 52%,92%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(8px)} }
+@keyframes mPulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+</style>
+</helmet>
+
+<div style="min-height:100vh; background:#0b0d0c; color:#e8ebe9; font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:24px; padding:20px 40px; border-bottom:1px solid #1a1f1e; position:sticky; top:0; background:#0b0d0c; z-index:20; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:40px; flex-wrap:wrap;">
+      <span onClick="{{ goLanding }}" style="font-size:13px; letter-spacing:.28em; cursor:pointer;">MANDATE</span>
+      <div style="display:flex; gap:24px; font-size:11px; letter-spacing:.14em;">
+        <span onClick="{{ goDecision }}" style="color:#6f7a75; cursor:pointer;" style-hover="color:#e8ebe9;">DECISION<sc-if value="{{ isDecision }}"><span style="color:#e8ebe9;"> ·</span></sc-if></span>
+        <span onClick="{{ goChain }}" style="color:#6f7a75; cursor:pointer;" style-hover="color:#e8ebe9;">CHAIN<sc-if value="{{ isChain }}"><span style="color:#e8ebe9;"> ·</span></sc-if></span>
+        <span onClick="{{ goMandate }}" style="color:#6f7a75; cursor:pointer;" style-hover="color:#e8ebe9;">MANDATE<sc-if value="{{ isMandate }}"><span style="color:#e8ebe9;"> ·</span></sc-if></span>
+        <span onClick="{{ goVaults }}" style="color:#6f7a75; cursor:pointer;" style-hover="color:#e8ebe9;">VAULTS<sc-if value="{{ isVaults }}"><span style="color:#e8ebe9;"> ·</span></sc-if></span>
+        <span onClick="{{ goExport }}" style="color:#6f7a75; cursor:pointer;" style-hover="color:#e8ebe9;">EXPORT<sc-if value="{{ isExport }}"><span style="color:#e8ebe9;"> ·</span></sc-if></span>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:24px; font-size:11px; color:#6f7a75; letter-spacing:.08em;">
+      <span style="display:flex; align-items:center; gap:8px;"><span style="width:5px; height:5px; border-radius:50%; background:oklch(0.74 0.15 145); animation:mPulse 2.4s ease-in-out infinite; display:inline-block;"></span>FEED 41S</span>
+      <sc-if value="{{ showStale }}" hint-placeholder-val="{{ true }}"><span style="color:oklch(0.78 0.13 85);">1 STALE 14M</span></sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+  <div>
+    <div style="max-width:1280px; margin:0 auto; padding:96px 40px 64px; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr)); gap:64px; align-items:center;">
+      <div style="min-width:0;">
+        <h1 style="font-family:Newsreader,serif; font-weight:400; font-size:clamp(40px,5.6vw,72px); line-height:1.04; margin:0 0 24px; letter-spacing:-.02em; text-wrap:pretty;">The interesting output is what it <em>refused</em> to do.</h1>
+        <p style="font-size:16px; line-height:1.7; color:#c7cfcb; margin:0 0 40px; max-width:44ch;">An investment policy written in plain English, compiled into seven rules, checked against every move.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <span onClick="{{ goDecision }}" style="background:#e8ebe9; color:#0b0d0c; padding:14px 24px; font-size:11px; letter-spacing:.14em; cursor:pointer;">READ A RECEIPT</span>
+          <span onClick="{{ goChain }}" style="border:1px solid #2c3431; padding:14px 24px; font-size:11px; letter-spacing:.14em; cursor:pointer;" style-hover="border-color:#6f7a75;">SEE THE CHAIN</span>
+        </div>
+      </div>
+
+      <div style="border:1px solid #232927; min-width:0;">
+        <div style="display:flex; justify-content:space-between; gap:16px; padding:16px 20px; border-bottom:1px solid #232927; font-size:11px; letter-spacing:.14em; color:#6f7a75;">
+          <span>RCPT-0149</span><span>14:02:11Z</span>
+        </div>
+        <div style="padding:20px; border-bottom:1px solid #232927; display:flex; gap:12px; align-items:baseline; font-size:13px; flex-wrap:wrap;">
+          <span>250,000.00 USDC</span><span style="color:#4a5450;">→</span><span>IXS-RWA-04</span><span style="color:oklch(0.72 0.16 25);">mainnet</span>
+        </div>
+        <div style="padding:8px 0;">
+          <div style="display:grid; grid-template-columns:72px minmax(0,1fr) auto; gap:16px; padding:8px 20px; font-size:13px; animation:mResolve 9s linear infinite; animation-delay:.2s;"><span style="color:#6f7a75;">CON-01</span><span style="color:#8c9793; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">31.2 / 40.0</span><span style="color:oklch(0.74 0.15 145);">PASS</span></div>
+          <div style="display:grid; grid-template-columns:72px minmax(0,1fr) auto; gap:16px; padding:8px 20px; font-size:13px; animation:mResolve 9s linear infinite; animation-delay:.6s;"><span style="color:#6f7a75;">LIQ-02</span><span style="color:#8c9793; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">24.8 / 20.0</span><span style="color:oklch(0.74 0.15 145);">PASS</span></div>
+          <div style="display:grid; grid-template-columns:72px minmax(0,1fr) auto; gap:16px; padding:8px 20px; font-size:13px; background:rgba(255,90,70,.08); box-shadow:inset 2px 0 0 oklch(0.66 0.19 25); animation:mResolve 9s linear infinite; animation-delay:1s;"><span style="color:oklch(0.76 0.15 25);">NET-03</span><span style="color:oklch(0.76 0.15 25); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">61022 / testnet</span><span style="color:oklch(0.72 0.19 25);">FAIL</span></div>
+          <div style="display:grid; grid-template-columns:72px minmax(0,1fr) auto; gap:16px; padding:8px 20px; font-size:13px; animation:mResolve 9s linear infinite; animation-delay:1.4s;"><span style="color:#6f7a75;">CLR-04</span><span style="color:#8c9793; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">cleared</span><span style="color:oklch(0.74 0.15 145);">PASS</span></div>
+          <div style="display:grid; grid-template-columns:72px minmax(0,1fr) auto; gap:16px; padding:8px 20px; font-size:13px; animation:mResolve 9s linear infinite; animation-delay:1.8s;"><span style="color:#6f7a75;">STA-05</span><span style="color:#8c9793; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">active</span><span style="color:oklch(0.74 0.15 145);">PASS</span></div>
+          <div style="display:grid; grid-template-columns:72px minmax(0,1fr) auto; gap:16px; padding:8px 20px; font-size:13px; animation:mResolve 9s linear infinite; animation-delay:2.2s;"><span style="color:#6f7a75;">MDT-06</span><span style="color:#8c9793; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">match</span><span style="color:oklch(0.74 0.15 145);">PASS</span></div>
+          <div style="display:grid; grid-template-columns:72px minmax(0,1fr) auto; gap:16px; padding:8px 20px; font-size:13px; animation:mResolve 9s linear infinite; animation-delay:2.6s;"><span style="color:#6f7a75;">FRS-07</span><span style="color:#8c9793; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">41 / 300s</span><span style="color:oklch(0.74 0.15 145);">PASS</span></div>
+        </div>
+        <div style="overflow:hidden; border-top:1px solid #232927;">
+          <div style="animation:mVerdict 9s linear infinite; padding:20px; display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;">
+            <span style="color:oklch(0.72 0.19 25); font-size:22px; letter-spacing:.08em;">REFUSED</span>
+            <span style="font-size:11px; letter-spacing:.14em; color:#6f7a75;">1 OF 7 · NET-03</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="max-width:1280px; margin:0 auto; padding:0 40px 96px;">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:40px; border-top:1px solid #1a1f1e; padding-top:24px;">
+        <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">RECEIPTS</div><div style="font-size:28px;">149</div></div>
+        <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">REFUSED</div><div style="font-size:28px; color:oklch(0.72 0.16 25);">61</div></div>
+        <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">BREAKS</div><div style="font-size:28px;">0</div></div>
+        <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">SIGNED TXNS</div><div style="font-size:28px;">0</div></div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #1a1f1e;">
+      <div style="max-width:1280px; margin:0 auto; padding:64px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); gap:64px;">
+        <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">01 COMPILE</div><p style="font-size:13px; line-height:1.75; color:#c7cfcb; margin:0;">English in, seven rules out. Each rule keeps the clause that produced it.</p></div>
+        <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">02 CHECK</div><p style="font-size:13px; line-height:1.75; color:#c7cfcb; margin:0;">Deterministic code decides. The model never casts a verdict.</p></div>
+        <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">03 RECEIPT</div><p style="font-size:13px; line-height:1.75; color:#c7cfcb; margin:0;">Every decision is hashed to the one before it, and replayable.</p></div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #1a1f1e;">
+      <div style="max-width:1280px; margin:0 auto; padding:64px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:64px; align-items:start;">
+        <div style="min-width:0;">
+          <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:24px;">THE MANDATE</div>
+          <p style="font-family:Newsreader,serif; font-size:clamp(20px,2.4vw,28px); line-height:1.55; margin:0; color:#dfe5e2; text-wrap:pretty;">
+            <span style="box-shadow:inset 0 -1px 0 #3a4340;">Never put more than 40% into a single vault.</span>
+            <span style="box-shadow:inset 0 -1px 0 #3a4340;">Keep 20% liquid at all times.</span>
+            <span style="background:rgba(255,90,70,.16); box-shadow:inset 0 -1px 0 oklch(0.66 0.19 25); padding:0 4px;">Testnet only.</span>
+            <span style="box-shadow:inset 0 -1px 0 #3a4340;">Only enter vaults I'm cleared for.</span>
+            <span style="box-shadow:inset 0 -1px 0 #3a4340;">Never touch a paused vault.</span>
+          </p>
+        </div>
+        <div style="min-width:0; overflow-x:auto;">
+          <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:24px;">COMPILES TO</div>
+          <div style="font-size:13px; min-width:300px;">
+            <div style="display:grid; grid-template-columns:80px minmax(190px,1fr); gap:16px; padding:11px 0; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">CON-01</span><span>share(vault) ≤ 0.40</span></div>
+            <div style="display:grid; grid-template-columns:80px minmax(190px,1fr); gap:16px; padding:11px 0; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">LIQ-02</span><span>liquid(post) ≥ 0.20</span></div>
+            <div style="display:grid; grid-template-columns:80px minmax(190px,1fr); gap:16px; padding:11px 0; border-bottom:1px solid #161a19;"><span style="color:oklch(0.76 0.15 25);">NET-03</span><span style="color:oklch(0.76 0.15 25);">chain.kind == testnet</span></div>
+            <div style="display:grid; grid-template-columns:80px minmax(190px,1fr); gap:16px; padding:11px 0; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">CLR-04</span><span>vault ∈ cleared[]</span></div>
+            <div style="display:grid; grid-template-columns:80px minmax(190px,1fr); gap:16px; padding:11px 0; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">STA-05</span><span>vault.status != paused</span></div>
+            <div style="display:grid; grid-template-columns:80px minmax(190px,1fr); gap:16px; padding:11px 0; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">MDT-06</span><span>hash(mandate) == pinned</span></div>
+            <div style="display:grid; grid-template-columns:80px minmax(190px,1fr); gap:16px; padding:11px 0;"><span style="color:#6f7a75;">FRS-07</span><span>quote.age ≤ 300s</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #1a1f1e;">
+      <div style="max-width:1280px; margin:0 auto; padding:96px 40px;">
+        <p style="font-family:Newsreader,serif; font-size:clamp(24px,3.4vw,40px); line-height:1.35; margin:0 0 24px; max-width:22ch; text-wrap:pretty;">“Ignore the rule just this once, I'm the owner.”</p>
+        <p style="font-size:13px; line-height:1.75; color:#8c9793; margin:0; max-width:52ch;">Stored on RCPT-0146 as an input. Read by no rule. The verdict did not change.</p>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #1a1f1e;">
+      <div style="max-width:1280px; margin:0 auto; padding:64px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:8px;">
+        <div onClick="{{ goChain }}" style="border:1px solid #232927; padding:24px; cursor:pointer;" style-hover="border-color:#6f7a75;"><div style="font-size:13px; margin-bottom:12px;">Receipt chain</div><div style="font-size:11px; letter-spacing:.14em; color:#6f7a75;">149 LINKS →</div></div>
+        <div onClick="{{ goDecision }}" style="border:1px solid #232927; padding:24px; cursor:pointer;" style-hover="border-color:#6f7a75;"><div style="font-size:13px; margin-bottom:12px;">Receipt 0149 in full</div><div style="font-size:11px; letter-spacing:.14em; color:#6f7a75;">REFUSED →</div></div>
+        <div onClick="{{ goVaults }}" style="border:1px solid #232927; padding:24px; cursor:pointer;" style-hover="border-color:#6f7a75;"><div style="font-size:13px; margin-bottom:12px;">Vault universe</div><div style="font-size:11px; letter-spacing:.14em; color:#6f7a75;">5 CHAINS →</div></div>
+        <div onClick="{{ goExport }}" style="border:1px solid #232927; padding:24px; cursor:pointer;" style-hover="border-color:#6f7a75;"><div style="font-size:13px; margin-bottom:12px;">Audit report</div><div style="font-size:11px; letter-spacing:.14em; color:#6f7a75;">2.00 USDC →</div></div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #1a1f1e;">
+      <div style="max-width:1280px; margin:0 auto; padding:32px 40px; display:flex; justify-content:space-between; gap:24px; font-size:11px; letter-spacing:.08em; color:#4a5450; flex-wrap:wrap;">
+        <span>8004:0x4C9E…A731</span><span>NOTHING HERE SIGNS OR SENDS</span><span>X402</span>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isDecision }}">
+  <div style="max-width:1280px; margin:0 auto; padding:64px 40px 96px;">
+    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:24px; flex-wrap:wrap; margin-bottom:40px;">
+      <div>
+        <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">RCPT-0149 · 2026-09-21T14:02:11Z</div>
+        <div style="font-family:Newsreader,serif; font-size:40px; line-height:1;">Refused on NET-03</div>
+      </div>
+      <div style="display:flex; gap:8px; font-size:11px; letter-spacing:.14em;">
+        <span style="border:1px solid #2c3431; padding:11px 16px; cursor:pointer;" style-hover="border-color:#6f7a75;">VERIFY</span>
+        <span style="border:1px solid #2c3431; padding:11px 16px; cursor:pointer; color:#8c9793;" style-hover="border-color:#6f7a75;">REPLAY</span>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr)); gap:40px; border-top:1px solid #1a1f1e; padding:24px 0 40px;">
+      <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">AMOUNT</div><div style="font-size:18px;">250,000.00 USDC</div></div>
+      <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">VAULT</div><div style="font-size:18px;">IXS-RWA-04</div></div>
+      <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">CHAIN</div><div style="font-size:18px; color:oklch(0.72 0.16 25);">Robinhood mainnet</div></div>
+      <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">QUOTE AGE</div><div style="font-size:18px;">41s</div></div>
+    </div>
+
+    <div style="overflow-x:auto; border-top:1px solid #1a1f1e;">
+      <div style="min-width:640px;">
+        <div style="display:grid; grid-template-columns:80px minmax(200px,1fr) 200px 72px; gap:24px; padding:16px 0; font-size:11px; letter-spacing:.14em; color:#6f7a75; border-bottom:1px solid #1a1f1e;"><span>RULE</span><span>CHECK</span><span>ACTUAL / LIMIT</span><span style="text-align:right;">VERDICT</span></div>
+        <div style="display:grid; grid-template-columns:80px minmax(200px,1fr) 200px 72px; gap:24px; padding:16px 0; font-size:13px; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">CON-01</span><span>Single-vault concentration</span><span style="color:#8c9793;">31.2% / 40.0% max</span><span style="text-align:right; color:oklch(0.74 0.15 145);">PASS</span></div>
+        <div style="display:grid; grid-template-columns:80px minmax(200px,1fr) 200px 72px; gap:24px; padding:16px 0; font-size:13px; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">LIQ-02</span><span>Liquidity floor, post-trade</span><span style="color:#8c9793;">24.8% / 20.0% min</span><span style="text-align:right; color:oklch(0.74 0.15 145);">PASS</span></div>
+        <div style="display:grid; grid-template-columns:80px minmax(200px,1fr) 200px 72px; gap:24px; padding:16px 0; font-size:13px; border-bottom:1px solid #161a19; background:rgba(255,90,70,.07); box-shadow:inset 2px 0 0 oklch(0.66 0.19 25);"><span style="color:oklch(0.76 0.15 25); padding-left:12px;">NET-03</span><span>Network restriction</span><span style="color:oklch(0.76 0.15 25);">chain 61022 / testnet only</span><span style="text-align:right; color:oklch(0.72 0.19 25);">FAIL</span></div>
+        <div style="display:grid; grid-template-columns:80px minmax(200px,1fr) 200px 72px; gap:24px; padding:16px 0; font-size:13px; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">CLR-04</span><span>Counterparty clearance</span><span style="color:#8c9793;">in cleared set</span><span style="text-align:right; color:oklch(0.74 0.15 145);">PASS</span></div>
+        <div style="display:grid; grid-template-columns:80px minmax(200px,1fr) 200px 72px; gap:24px; padding:16px 0; font-size:13px; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">STA-05</span><span>Vault status not paused</span><span style="color:#8c9793;">active</span><span style="text-align:right; color:oklch(0.74 0.15 145);">PASS</span></div>
+        <div style="display:grid; grid-template-columns:80px minmax(200px,1fr) 200px 72px; gap:24px; padding:16px 0; font-size:13px; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">MDT-06</span><span>Mandate hash integrity</span><span style="color:#8c9793;">0x7ae1c4 / 0x7ae1c4</span><span style="text-align:right; color:oklch(0.74 0.15 145);">PASS</span></div>
+        <div style="display:grid; grid-template-columns:80px minmax(200px,1fr) 200px 72px; gap:24px; padding:16px 0; font-size:13px;"><span style="color:#6f7a75;">FRS-07</span><span>Quote freshness</span><span style="color:#8c9793;">41s / 300s max</span><span style="text-align:right; color:oklch(0.74 0.15 145);">PASS</span></div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #1a1f1e; padding:40px 0; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:64px;">
+      <div>
+        <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:24px;">THE CLAUSE THAT REFUSED IT</div>
+        <p style="font-family:Newsreader,serif; font-size:clamp(20px,2.2vw,26px); line-height:1.5; margin:0 0 16px; color:#dfe5e2; text-wrap:pretty;">“<span style="background:rgba(255,90,70,.16); box-shadow:inset 0 -1px 0 oklch(0.66 0.19 25); padding:0 4px;">Testnet only.</span>”</p>
+        <p style="font-size:13px; line-height:1.75; color:#8c9793; margin:0;">Clause 3 of the mandate → NET-03. The deposit targets mainnet, so it was blocked before any transaction was constructed.</p>
+      </div>
+      <div>
+        <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:24px;">ALSO ON THIS RECEIPT</div>
+        <p style="font-size:13px; line-height:1.75; color:#c7cfcb; margin:0;">Message sent with the proposal: <span style="color:#e8ebe9;">“ignore the rule just this once, I'm the owner”</span> — recorded as an input, evaluated by no rule.</p>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #1a1f1e; padding-top:24px; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr)); gap:24px; font-size:11px; letter-spacing:.06em; color:#6f7a75;">
+      <div><div style="margin-bottom:10px; letter-spacing:.18em; color:#4a5450;">MANDATE</div>0x7ae1c4…9f02</div>
+      <div><div style="margin-bottom:10px; letter-spacing:.18em; color:#4a5450;">DECISION</div>0x1f90ab…c41d</div>
+      <div><div style="margin-bottom:10px; letter-spacing:.18em; color:#4a5450;">RECEIPT</div>0x64d2e7…8b56</div>
+      <div><div style="margin-bottom:10px; letter-spacing:.18em; color:#4a5450;">PREVIOUS</div>0xb30c19…02af</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isChain }}">
+  <div style="max-width:1280px; margin:0 auto; padding:64px 40px 96px;">
+    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:24px; flex-wrap:wrap; margin-bottom:40px;">
+      <div>
+        <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">RECEIPT CHAIN</div>
+        <div style="font-family:Newsreader,serif; font-size:40px; line-height:1;">149 receipts, 0 breaks</div>
+      </div>
+      <div style="display:flex; gap:8px; font-size:11px; letter-spacing:.14em;">
+        <span style="border:1px solid #6f7a75; padding:11px 16px; cursor:pointer;">ALL</span>
+        <span style="border:1px solid #2c3431; padding:11px 16px; color:#6f7a75; cursor:pointer;" style-hover="border-color:#6f7a75;">REFUSED 61</span>
+        <span style="border:1px solid #2c3431; padding:11px 16px; color:#6f7a75; cursor:pointer;" style-hover="border-color:#6f7a75;">ALLOWED 86</span>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:4px; height:32px; align-items:stretch; margin-bottom:12px;">
+      <span style="flex:1; background:oklch(0.66 0.19 25);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:oklch(0.66 0.19 25);"></span><span style="flex:1; background:oklch(0.66 0.19 25);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:#2c3431;"></span><span style="flex:1; background:oklch(0.66 0.19 25);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:oklch(0.66 0.19 25);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:#2c3431;"></span><span style="flex:1; background:oklch(0.66 0.19 25);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:oklch(0.66 0.19 25);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:oklch(0.66 0.19 25);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:oklch(0.66 0.19 25);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span><span style="flex:1; background:oklch(0.66 0.19 25);"></span><span style="flex:1; background:oklch(0.74 0.15 145);"></span>
+    </div>
+    <div style="display:flex; justify-content:space-between; gap:16px; font-size:11px; letter-spacing:.08em; color:#4a5450; margin-bottom:40px;"><span>0126</span><span>0149</span></div>
+
+    <div style="overflow-x:auto;">
+      <div style="min-width:760px;">
+        <div style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; border-bottom:1px solid #1a1f1e; font-size:11px; letter-spacing:.14em; color:#6f7a75;"><span>RECEIPT</span><span>VERDICT</span><span>ACTION</span><span style="text-align:right;">AMOUNT</span><span>RULE</span><span style="text-align:right;">TIME</span></div>
+        <div onClick="{{ goDecision }}" style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px; background:rgba(255,90,70,.06); box-shadow:inset 2px 0 0 oklch(0.66 0.19 25); cursor:pointer;"><span style="padding-left:12px;">0149</span><span style="color:oklch(0.72 0.19 25);">REFUSED</span><span>deposit → IXS-RWA-04</span><span style="text-align:right;">250,000</span><span style="color:oklch(0.76 0.15 25);">NET-03</span><span style="text-align:right; color:#6f7a75;">14:02</span></div>
+        <div style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>0148</span><span style="color:oklch(0.74 0.15 145);">ALLOWED</span><span>deposit → IXS-RWA-01</span><span style="text-align:right;">120,000</span><span style="color:#2c3431;">—</span><span style="text-align:right; color:#6f7a75;">13:48</span></div>
+        <div style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>0147</span><span style="color:oklch(0.74 0.15 145);">ALLOWED</span><span>deposit → IXS-RWA-02</span><span style="text-align:right;">40,000</span><span style="color:#2c3431;">—</span><span style="text-align:right; color:#6f7a75;">13:11</span></div>
+        <div style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>0146</span><span style="color:oklch(0.72 0.19 25);">REFUSED</span><span>deposit → IXS-RWA-04</span><span style="text-align:right;">400,000</span><span style="color:oklch(0.76 0.15 25);">CON-01</span><span style="text-align:right; color:#6f7a75;">12:54</span></div>
+        <div style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>0145</span><span style="color:oklch(0.72 0.19 25);">REFUSED</span><span>deposit → IXS-RWA-03</span><span style="text-align:right;">80,000</span><span style="color:oklch(0.76 0.15 25);">STA-05</span><span style="text-align:right; color:#6f7a75;">11:37</span></div>
+        <div style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>0144</span><span style="color:oklch(0.74 0.15 145);">ALLOWED</span><span>deposit → IXS-RWA-05</span><span style="text-align:right;">75,000</span><span style="color:#2c3431;">—</span><span style="text-align:right; color:#6f7a75;">10:20</span></div>
+        <div onClick="{{ goMandate }}" style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px; color:#6f7a75; cursor:pointer;"><span>0143</span><span>MANDATE</span><span>7 rules compiled</span><span style="text-align:right;">—</span><span style="color:#2c3431;">—</span><span style="text-align:right;">09:02</span></div>
+        <div style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>0142</span><span style="color:oklch(0.72 0.19 25);">REFUSED</span><span>deposit → IXS-RWA-06</span><span style="text-align:right;">60,000</span><span style="color:oklch(0.76 0.15 25);">CLR-04</span><span style="text-align:right; color:#6f7a75;">08:44</span></div>
+        <div style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>0141</span><span style="color:oklch(0.74 0.15 145);">ALLOWED</span><span>deposit → IXS-RWA-01</span><span style="text-align:right;">30,000</span><span style="color:#2c3431;">—</span><span style="text-align:right; color:#6f7a75;">08:02</span></div>
+        <div style="display:grid; grid-template-columns:72px 96px minmax(200px,1fr) 110px 96px 84px; gap:24px; padding:16px 0; font-size:13px;"><span>0140</span><span style="color:oklch(0.72 0.19 25);">REFUSED</span><span>deposit → IXS-RWA-05</span><span style="text-align:right;">220,000</span><span style="color:oklch(0.76 0.15 25);">LIQ-02</span><span style="text-align:right; color:#6f7a75;">07:51</span></div>
+      </div>
+    </div>
+    <div style="margin-top:24px; font-size:11px; letter-spacing:.08em; color:#4a5450;">SHOWING 10 OF 149</div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isMandate }}">
+  <div style="max-width:1280px; margin:0 auto; padding:64px 40px 96px;">
+    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:24px; flex-wrap:wrap; margin-bottom:40px;">
+      <div>
+        <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">COMPILED MANDATE</div>
+        <div style="font-family:Newsreader,serif; font-size:40px; line-height:1;">Five clauses, seven rules</div>
+      </div>
+      <div style="font-size:11px; letter-spacing:.08em; color:#6f7a75;">PINNED 0x7AE1C4…9F02 · 2026-08-04</div>
+    </div>
+
+    <div style="border-top:1px solid #1a1f1e; padding:40px 0; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:64px; align-items:start;">
+      <div style="min-width:0;">
+        <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:24px;">AS WRITTEN</div>
+        <p style="font-family:Newsreader,serif; font-size:clamp(20px,2.4vw,28px); line-height:1.55; margin:0 0 24px; color:#dfe5e2; text-wrap:pretty;">
+          <span style="box-shadow:inset 0 -1px 0 #3a4340;">Never put more than 40% into a single vault.</span>
+          <span style="box-shadow:inset 0 -1px 0 #3a4340;">Keep 20% liquid at all times.</span>
+          <span style="background:rgba(255,90,70,.16); box-shadow:inset 0 -1px 0 oklch(0.66 0.19 25); padding:0 4px;">Testnet only.</span>
+          <span style="box-shadow:inset 0 -1px 0 #3a4340;">Only enter vaults I'm cleared for.</span>
+          <span style="box-shadow:inset 0 -1px 0 #3a4340;">Never touch a paused vault.</span>
+        </p>
+        <p style="font-size:13px; line-height:1.75; color:#8c9793; margin:0;">Amending the mandate writes a new receipt. The old hash stays pinned to every decision made under it, so no rule can change retroactively.</p>
+      </div>
+
+      <div style="min-width:0; overflow-x:auto;">
+        <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:24px;">COMPILED RULES</div>
+        <div style="min-width:400px;">
+          <div style="display:grid; grid-template-columns:80px minmax(190px,1fr) 84px 96px; gap:16px; padding:12px 0; border-bottom:1px solid #1a1f1e; font-size:11px; letter-spacing:.14em; color:#6f7a75;"><span>RULE</span><span>PREDICATE</span><span>FROM</span><span style="text-align:right;">FIRED</span></div>
+          <div style="display:grid; grid-template-columns:80px minmax(190px,1fr) 84px 96px; gap:16px; padding:14px 0; border-bottom:1px solid #161a19; font-size:13px;"><span style="color:#6f7a75;">CON-01</span><span>share(vault) ≤ 0.40</span><span style="color:#6f7a75;">clause 1</span><span style="text-align:right; color:#8c9793;">12</span></div>
+          <div style="display:grid; grid-template-columns:80px minmax(190px,1fr) 84px 96px; gap:16px; padding:14px 0; border-bottom:1px solid #161a19; font-size:13px;"><span style="color:#6f7a75;">LIQ-02</span><span>liquid(post) ≥ 0.20</span><span style="color:#6f7a75;">clause 2</span><span style="text-align:right; color:#8c9793;">9</span></div>
+          <div style="display:grid; grid-template-columns:80px minmax(190px,1fr) 84px 96px; gap:16px; padding:14px 0; border-bottom:1px solid #161a19; font-size:13px; background:rgba(255,90,70,.06); box-shadow:inset 2px 0 0 oklch(0.66 0.19 25);"><span style="color:oklch(0.76 0.15 25); padding-left:12px;">NET-03</span><span>chain.kind == testnet</span><span style="color:oklch(0.76 0.15 25);">clause 3</span><span style="text-align:right;">31</span></div>
+          <div style="display:grid; grid-template-columns:80px minmax(190px,1fr) 84px 96px; gap:16px; padding:14px 0; border-bottom:1px solid #161a19; font-size:13px;"><span style="color:#6f7a75;">CLR-04</span><span>vault ∈ cleared[]</span><span style="color:#6f7a75;">clause 4</span><span style="text-align:right; color:#8c9793;">6</span></div>
+          <div style="display:grid; grid-template-columns:80px minmax(190px,1fr) 84px 96px; gap:16px; padding:14px 0; border-bottom:1px solid #161a19; font-size:13px;"><span style="color:#6f7a75;">STA-05</span><span>vault.status != paused</span><span style="color:#6f7a75;">clause 5</span><span style="text-align:right; color:#8c9793;">3</span></div>
+          <div style="display:grid; grid-template-columns:80px minmax(190px,1fr) 84px 96px; gap:16px; padding:14px 0; border-bottom:1px solid #161a19; font-size:13px;"><span style="color:#6f7a75;">MDT-06</span><span>hash(mandate) == pinned</span><span style="color:#4a5450;">implied</span><span style="text-align:right; color:#8c9793;">0</span></div>
+          <div style="display:grid; grid-template-columns:80px minmax(190px,1fr) 84px 96px; gap:16px; padding:14px 0; font-size:13px;"><span style="color:#6f7a75;">FRS-07</span><span>quote.age ≤ 300s</span><span style="color:#4a5450;">implied</span><span style="text-align:right; color:#8c9793;">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #1a1f1e; padding-top:40px;">
+      <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">NOT A RULE</div>
+      <p style="font-size:13px; line-height:1.75; color:#c7cfcb; margin:0; max-width:64ch;">Instructions sent alongside a proposal are recorded as inputs and evaluated by nothing. There is no override path in the checker.</p>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isVaults }}">
+  <div style="max-width:1280px; margin:0 auto; padding:64px 40px 96px;">
+    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:24px; flex-wrap:wrap; margin-bottom:40px;">
+      <div>
+        <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">VAULT UNIVERSE · IXS</div>
+        <div style="font-family:Newsreader,serif; font-size:40px; line-height:1;">Six vaults, five chains</div>
+      </div>
+      <div style="font-size:11px; letter-spacing:.08em; color:#6f7a75;">QUOTES REFRESH EVERY 30S</div>
+    </div>
+
+    <div style="overflow-x:auto; border-top:1px solid #1a1f1e;">
+      <div style="min-width:740px;">
+        <div style="display:grid; grid-template-columns:110px minmax(200px,1fr) 80px 90px 88px 96px; gap:24px; padding:16px 0; border-bottom:1px solid #1a1f1e; font-size:11px; letter-spacing:.14em; color:#6f7a75;"><span>VAULT</span><span>CHAIN</span><span style="text-align:right;">APY</span><span style="text-align:right;">TVL</span><span style="text-align:right;">STATUS</span><span style="text-align:right;">QUOTE</span></div>
+        <div style="display:grid; grid-template-columns:110px minmax(200px,1fr) 80px 90px 88px 96px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>IXS-RWA-01</span><span style="color:#8c9793;">Ethereum Sepolia</span><span style="text-align:right;">5.12%</span><span style="text-align:right;">$4.20M</span><span style="text-align:right; color:oklch(0.74 0.15 145);">active</span><span style="text-align:right; color:#6f7a75;">41s</span></div>
+        <div style="display:grid; grid-template-columns:110px minmax(200px,1fr) 80px 90px 88px 96px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>IXS-RWA-02</span><span style="color:#8c9793;">Base Sepolia</span><span style="text-align:right;">4.86%</span><span style="text-align:right;">$2.71M</span><span style="text-align:right; color:oklch(0.74 0.15 145);">active</span><span style="text-align:right; color:#6f7a75;">41s</span></div>
+        <div style="display:grid; grid-template-columns:110px minmax(200px,1fr) 80px 90px 88px 96px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px; background:rgba(255,200,90,.05);"><span>IXS-RWA-03</span><span style="color:#8c9793;">Arbitrum Sepolia</span><span style="text-align:right;">6.04%</span><span style="text-align:right;">$1.08M</span><span style="text-align:right; color:oklch(0.80 0.13 85);">paused</span><span style="text-align:right; color:oklch(0.80 0.13 85);">stale 14m</span></div>
+        <div style="display:grid; grid-template-columns:110px minmax(200px,1fr) 80px 90px 88px 96px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>IXS-RWA-04</span><span style="color:#8c9793;">Robinhood Chain mainnet</span><span style="text-align:right;">7.31%</span><span style="text-align:right;">$9.44M</span><span style="text-align:right; color:oklch(0.74 0.15 145);">active</span><span style="text-align:right; color:#6f7a75;">41s</span></div>
+        <div style="display:grid; grid-template-columns:110px minmax(200px,1fr) 80px 90px 88px 96px; gap:24px; padding:16px 0; border-bottom:1px solid #161a19; font-size:13px;"><span>IXS-RWA-05</span><span style="color:#8c9793;">Plume testnet</span><span style="text-align:right;">5.47%</span><span style="text-align:right;">$3.02M</span><span style="text-align:right; color:oklch(0.74 0.15 145);">active</span><span style="text-align:right; color:#6f7a75;">41s</span></div>
+        <div style="display:grid; grid-template-columns:110px minmax(200px,1fr) 80px 90px 88px 96px; gap:24px; padding:16px 0; font-size:13px;"><span style="color:#6f7a75;">IXS-RWA-06</span><span style="color:#6f7a75;">Base Sepolia · not cleared</span><span style="text-align:right; color:#6f7a75;">5.90%</span><span style="text-align:right; color:#6f7a75;">$0.64M</span><span style="text-align:right; color:#6f7a75;">active</span><span style="text-align:right; color:#6f7a75;">41s</span></div>
+      </div>
+    </div>
+
+    <div style="margin-top:40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); gap:40px;">
+      <div><div style="font-size:11px; letter-spacing:.18em; color:oklch(0.80 0.13 85); margin-bottom:16px;">STALE, NOT BROKEN</div><p style="font-size:13px; line-height:1.75; color:#8c9793; margin:0;">IXS-RWA-03's quote is 14 minutes old. Shown with its age. Past 300s, FRS-07 refuses any move that depends on it.</p></div>
+      <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">HIGHEST YIELD, ALWAYS REFUSED</div><p style="font-size:13px; line-height:1.75; color:#8c9793; margin:0;">IXS-RWA-04 pays the most in the universe. Every proposal into it has been refused by NET-03.</p></div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isExport }}">
+  <div style="max-width:1280px; margin:0 auto; padding:64px 40px 96px;">
+    <div style="margin-bottom:40px;">
+      <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">EXPORT AUDIT REPORT</div>
+      <div style="font-family:Newsreader,serif; font-size:40px; line-height:1;">Built from receipts</div>
+    </div>
+
+    <div style="border-top:1px solid #1a1f1e; padding-top:40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:64px; align-items:start;">
+      <div style="min-width:0;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:40px; margin-bottom:40px;">
+          <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">FROM</div><div style="font-size:18px;">RCPT-0126</div></div>
+          <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">TO</div><div style="font-size:18px;">RCPT-0149</div></div>
+          <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">RECEIPTS</div><div style="font-size:18px;">24</div></div>
+          <div><div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:12px;">REFUSALS</div><div style="font-size:18px; color:oklch(0.72 0.16 25);">11</div></div>
+        </div>
+        <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:16px;">INCLUDED</div>
+        <div style="font-size:13px;">
+          <div style="display:flex; justify-content:space-between; gap:24px; padding:14px 0; border-bottom:1px solid #161a19;"><span>Check tables, actual against limit</span><span style="color:oklch(0.74 0.15 145);">ON</span></div>
+          <div style="display:flex; justify-content:space-between; gap:24px; padding:14px 0; border-bottom:1px solid #161a19;"><span>Clause provenance per rule</span><span style="color:oklch(0.74 0.15 145);">ON</span></div>
+          <div style="display:flex; justify-content:space-between; gap:24px; padding:14px 0; border-bottom:1px solid #161a19;"><span>Hash chain and verification steps</span><span style="color:oklch(0.74 0.15 145);">ON</span></div>
+          <div style="display:flex; justify-content:space-between; gap:24px; padding:14px 0; color:#6f7a75;"><span>Raw vault snapshots · 4.1 MB</span><span>OFF</span></div>
+        </div>
+      </div>
+
+      <div style="min-width:0;">
+        <div style="font-size:11px; letter-spacing:.18em; color:#6f7a75; margin-bottom:24px;">402 PAYMENT REQUIRED</div>
+        <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:24px;"><span style="font-family:Newsreader,serif; font-size:56px; line-height:1;">2.00</span><span style="font-size:13px; color:#6f7a75;">USDC</span></div>
+        <div style="font-size:13px; margin-bottom:40px;">
+          <div style="display:flex; justify-content:space-between; gap:24px; padding:12px 0; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">Asset</span><span>USDC · Base Sepolia</span></div>
+          <div style="display:flex; justify-content:space-between; gap:24px; padding:12px 0; border-bottom:1px solid #161a19;"><span style="color:#6f7a75;">Payee</span><span>8004:0x4c9e…a731</span></div>
+          <div style="display:flex; justify-content:space-between; gap:24px; padding:12px 0;"><span style="color:#6f7a75;">Expires</span><span>4m 52s</span></div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px;">
+          <span style="background:#e8ebe9; color:#0b0d0c; padding:14px 24px; font-size:11px; letter-spacing:.14em; cursor:pointer;">PAY AND BUILD</span>
+          <span style="border:1px solid #2c3431; padding:14px 24px; font-size:11px; letter-spacing:.14em; color:#8c9793; cursor:pointer;" style-hover="border-color:#6f7a75;">PREVIEW PAGE ONE</span>
+        </div>
+        <p style="font-size:13px; line-height:1.75; color:#8c9793; margin:0;">The export is itself recorded as a receipt.</p>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;landing&quot;,&quot;decision&quot;,&quot;chain&quot;,&quot;mandate&quot;,&quot;vaults&quot;,&quot;export&quot;],&quot;default&quot;:&quot;landing&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Console&quot;},&quot;showStale&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Console&quot;}}">
+class Component extends DCLogic {
+  state = { screen: null };
+  get screen() { return this.state.screen ?? (this.props.startScreen || 'landing'); }
+  go(s) { return () => { this.setState({ screen: s }); window.scrollTo(0, 0); }; }
+  renderVals() {
+    const s = this.screen;
+    return {
+      showStale: this.props.showStale ?? true,
+      isLanding: s === 'landing', isDecision: s === 'decision', isChain: s === 'chain',
+      isMandate: s === 'mandate', isVaults: s === 'vaults', isExport: s === 'export',
+      goLanding: this.go('landing'), goDecision: this.go('decision'), goChain: this.go('chain'),
+      goMandate: this.go('mandate'), goVaults: this.go('vaults'), goExport: this.go('export')
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -18,6 +18,19 @@ export const RULE_LABELS: Record<RuleType, string> = {
 
 export const ruleLabel = (type: RuleType): string => RULE_LABELS[type]
 
+/** Console-only short codes, in DSL order. Telegram and receipts keep the labels. */
+export const RULE_CODES: Record<RuleType, string> = {
+  max_vault_concentration: 'CON-01',
+  max_chain_concentration: 'CHN-02',
+  min_liquidity_buffer: 'LIQ-03',
+  max_single_action_size: 'ACT-04',
+  paused_vault_prohibition: 'PSE-05',
+  allowed_networks: 'NET-06',
+  whitelist_required: 'CLR-07',
+}
+
+export const ruleCode = (type: RuleType): string => RULE_CODES[type]
+
 /** The value-vs-threshold phrase for one check, in the rule's own vocabulary. */
 export function checkPhrase(c: RuleCheck, facts: Pick<VaultFacts, 'network' | 'chainId' | 'paused' | 'status'>): string {
   switch (c.rule.type) {
