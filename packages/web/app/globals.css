@@ -774,3 +774,44 @@ nav a {
     background-size: 100% 100% !important;
   }
 }
+
+/* ---------- phones: tables reflow instead of scrolling sideways.
+ *
+ * Every table here is a `.trow` grid inside a `.scroll-x` wrapper with a fixed
+ * minWidth, which on a phone means the numbers live off-screen behind a sideways
+ * swipe — and the numbers are the product. Under 720px the fixed width is dropped
+ * and each row folds into two columns, so a check reads:
+ *
+ *   CON-01                    Vault concentration
+ *   70.00% · limit 40.00%                    FAIL
+ */
+@media (max-width: 720px) {
+  .scroll-x {
+    overflow-x: visible;
+  }
+  .scroll-x > div {
+    min-width: 0 !important;
+  }
+  .trow {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 2px 12px;
+    padding: 12px 0;
+  }
+  /* Column headers describe a shape the phone no longer uses. */
+  .trow.thead {
+    display: none;
+  }
+  .trow > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  /* Only the cells the desktop already right-aligns (.tright) stay right; the rest
+     read left-to-right, so "CON-01 Vault concentration" is one natural line. */
+  .flag > :first-child {
+    padding-left: 8px;
+  }
+  /* Barcodes shrink rather than dictate the row width. */
+  .mini-code svg {
+    max-width: 140px;
+  }
+}

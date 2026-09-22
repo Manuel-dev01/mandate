@@ -6,7 +6,7 @@ import { TelegramIcon } from './telegram'
 
 /** Sticky header. The right side is the agent's real state from /health — no invented feed timer. */
 export async function Header() {
-  const health = await api<HealthView>('/health', { timeoutMs: 4000 })
+  const health = await api<HealthView>('/health', { timeoutMs: 8000 })
   const tg = health.ok ? health.data.telegram : null
   const state = !health.ok ? 'unreachable' : tg?.state === 'polling' ? 'polling' : tg?.state === 'connecting' ? 'connecting' : 'api only'
   const dot = !health.ok ? 'off' : state === 'polling' || state === 'api only' ? '' : 'amber'

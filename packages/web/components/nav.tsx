@@ -14,7 +14,7 @@ const ITEMS: { href: string; label: string; match: (p: string) => boolean }[] = 
 export function Nav() {
   const path = usePathname() ?? '/'
   return (
-    <nav style={{ display: 'flex', gap: 24, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' }}>
+    <nav style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' }}>
       {ITEMS.map((it) => {
         const on = it.match(path)
         return (
