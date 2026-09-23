@@ -9,7 +9,7 @@
  * Scope = the Telegram chat id, so each chat keeps its own mandate.
  */
 
-import { defaultDeps, getReceipt, help, proposeAction, setMandate, vaultStatus, type CapabilityDeps } from './capabilities.js'
+import { defaultDeps, getReceipt, help, nudge, proposeAction, setMandate, vaultStatus, type CapabilityDeps } from './capabilities.js'
 import { parseIntent } from './parse.js'
 import { chunkLines, toTelegramHtml } from './format.js'
 
@@ -112,7 +112,7 @@ export class TelegramBot {
       case 'vault_status':
         return vaultStatus({ vault: intent.vault }, this.deps)
       case 'unknown':
-        return `I didn't catch that. ${help()}`
+        return nudge()
     }
   }
 
@@ -150,6 +150,11 @@ export class TelegramBot {
       for (const u of updates) {
         this.offset = u.update_id + 1
         const m = u.message
+        // A sticker or photo used to get silence, which reads as a dead bot.
+        if (m && !m.text) {
+          void this.send(m.chat.id, nudge()).catch(() => undefined)
+          continue
+        }
         if (!m?.text) continue
         const chatId = m.chat.id
         this.log(`[${chatId}] ${m.from?.username ?? m.from?.id ?? '?'}: ${m.text.slice(0, 80)}`)
@@ -161,7 +166,9 @@ export class TelegramBot {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
           this.log(`[${chatId}] handler error: ${msg}`)
-          await this.send(chatId, `Something failed on my side: ${msg}. Nothing was decided or recorded.`).catch(() => undefined)
+          // The detail goes to our logs, not to the chat: an internal message can carry a
+          // URL or a path, and the user can do nothing with it either way.
+          await this.send(chatId, 'Something failed on my side. Nothing was decided or recorded — please try that again.').catch(() => undefined)
         }
       }
     }

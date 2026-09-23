@@ -177,7 +177,10 @@ export class ServClient {
       apiKey,
       baseURL: opts.baseURL ?? SERV_BASE_URL,
       // SERV Tools measured at ~10.6s; frontier models are slower again.
-      timeout: opts.timeoutMs ?? 120_000,
+      // 120s x 2 attempts meant a hung SERV call could hold a Telegram reply for four
+      // minutes before the deterministic template took over. The explanation is never
+      // worth that wait; the verdict is already decided without it.
+      timeout: opts.timeoutMs ?? 45_000,
       // Paid tokens: one retry on 5xx/429, never a loop.
       maxRetries: opts.maxRetries ?? 1,
     })

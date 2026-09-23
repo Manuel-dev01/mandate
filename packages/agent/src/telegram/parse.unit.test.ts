@@ -65,6 +65,28 @@ test('parseIntent: receipts, status, help, unknown', () => {
   assert.equal(parseIntent('what is the weather', false).kind, 'unknown')
 })
 
+// Both of these fell through to `unknown` in live rehearsal (RECON §6.20): a judge
+// types the short form, not the documented one.
+test('parseIntent: a vault name without "of"/"for" still reaches vault_status', () => {
+  assert.deepEqual(parseIntent('vault status arc', false), { kind: 'vault_status', vault: 'arc' })
+  assert.deepEqual(parseIntent('vault status bsc', false), { kind: 'vault_status', vault: 'bsc' })
+  assert.deepEqual(parseIntent('status robinhood', false), { kind: 'vault_status', vault: 'robinhood' })
+  assert.deepEqual(parseIntent('vault status the Avalanche vault', false), { kind: 'vault_status', vault: 'Avalanche' })
+  // The bare forms must keep working.
+  assert.deepEqual(parseIntent('vault status', false), { kind: 'vault_status', vault: undefined })
+  assert.deepEqual(parseIntent('status of the Avalanche vault', false), { kind: 'vault_status', vault: 'Avalanche' })
+})
+
+test('parseIntent: a greeting in front of the question still reaches help', () => {
+  assert.equal(parseIntent('hey what can you do', false).kind, 'help')
+  assert.equal(parseIntent('hi, what can you do?', false).kind, 'help')
+  assert.equal(parseIntent('hey', false).kind, 'help')
+  assert.equal(parseIntent('what do you do', false).kind, 'help')
+  assert.equal(parseIntent('who are you', false).kind, 'help')
+  // Still not a catch-all for any greeting-prefixed sentence.
+  assert.equal(parseIntent('hey what is the weather', false).kind, 'unknown')
+})
+
 test('expandAmount never touches a float', () => {
   assert.equal(expandAmount('5,000', undefined), '5000')
   assert.equal(expandAmount('2.5', 'k'), '2500')

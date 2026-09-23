@@ -41,14 +41,21 @@ export async function api<T>(path: string, init: { timeoutMs?: number } = {}): P
   }
 }
 
-export async function apiText(path: string): Promise<ApiResult<string>> {
+export async function apiText(path: string, init: { timeoutMs?: number } = {}): Promise<ApiResult<string>> {
   const checkedAt = new Date().toISOString()
+  // Bounded like api(): without this, a hung agent hung the page that renders the
+  // report preview, with no error state to fall back to.
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), init.timeoutMs ?? 12_000)
   try {
-    const res = await fetch(`${API_URL}${path}`, { cache: 'no-store', headers: API_KEY ? { 'x-console-key': API_KEY } : {} })
+    const res = await fetch(`${API_URL}${path}`, { cache: 'no-store', signal: ctrl.signal, headers: API_KEY ? { 'x-console-key': API_KEY } : {} })
     if (!res.ok) return { ok: false, reason: `${res.status}`, status: res.status, checkedAt }
     return { ok: true, data: await res.text(), checkedAt }
   } catch (err) {
-    return { ok: false, reason: err instanceof Error ? err.message : String(err), status: null, checkedAt }
+    const reason = err instanceof Error ? (err.name === 'AbortError' ? 'timed out' : err.message) : String(err)
+    return { ok: false, reason, status: null, checkedAt }
+  } finally {
+    clearTimeout(timer)
   }
 }
 

@@ -68,6 +68,9 @@ function facilitator(): FacilitatorLike {
   return cached
 }
 
+/** A facilitator call that has not answered by now is treated as unreachable. */
+const FACILITATOR_TIMEOUT_MS = 20_000
+
 /**
  * Header -> money moved, or a named reason why not. Verify first (cheap, no chain
  * write), settle second. One retry on a transport failure; never throws.
@@ -82,10 +85,28 @@ export async function settlementOf(header: string, requirements: PaymentRequirem
     return { kind: 'invalid', reason: `could not decode the X-PAYMENT header: ${messageOf(err)}` }
   }
 
+  // The facilitator is someone else's service. A thrown error we retry, but a socket
+  // that simply hangs would leave the buyer's browser waiting with money authorised and
+  // nothing decided — so a hang becomes a transport failure, which the caller turns into
+  // a 503 that sells nothing.
+  const withTimeout = async <T>(run: () => Promise<T>): Promise<T> => {
+    let timer: NodeJS.Timeout | undefined
+    try {
+      return await Promise.race([
+        run(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`facilitator timed out after ${FACILITATOR_TIMEOUT_MS}ms`)), FACILITATOR_TIMEOUT_MS)
+        }),
+      ])
+    } finally {
+      if (timer) clearTimeout(timer)
+    }
+  }
+
   const attempt = async <T>(run: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; transport: boolean; reason: string }> => {
     for (let i = 0; i < 2; i++) {
       try {
-        return { ok: true, value: await run() }
+        return { ok: true, value: await withTimeout(run) }
       } catch (err) {
         if (!isTransport(err) || i === 1) return { ok: false, transport: isTransport(err), reason: messageOf(err) }
       }

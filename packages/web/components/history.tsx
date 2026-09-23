@@ -23,10 +23,13 @@ export function History({ history, compact = false }: { history: HistoryView; co
   }
   const height = compact ? 56 : 96
   const MIN_BAR = compact ? 8 : 14
+  // With two or three buckets, flex:1 makes each bar half the page — it reads as a
+  // colour block, not a chart. Cap the width and let the row start from the left.
+  const MAX_BAR = buckets.length <= 6 ? 44 : undefined
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: buckets.length > 40 ? 1 : 3, height, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-start', gap: buckets.length > 40 ? 1 : 3, height, marginBottom: 8 }}>
         {buckets.map((b, i) => {
           const n = b.allowed + b.refused
           // A day with one decision must still be visible next to a day with ten,
@@ -37,7 +40,7 @@ export function History({ history, compact = false }: { history: HistoryView; co
               key={b.at}
               className="bar-grow"
               title={`${label(b.at)} · ${b.allowed} allowed, ${b.refused} refused`}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height, ...delay(i, buckets.length > 40 ? 8 : 25, 150) }}
+              style={{ flex: 1, ...(MAX_BAR ? { maxWidth: MAX_BAR } : {}), display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height, ...delay(i, buckets.length > 40 ? 8 : 25, 150) }}
             >
               {n === 0 ? (
                 // A quiet period is information: show the floor, not a gap.

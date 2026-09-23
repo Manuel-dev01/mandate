@@ -20,15 +20,18 @@ const ACTION_RE =
 
 const EXCEPTION_RE = /\b(ignore|just this once|i'?m the owner|i am the owner|exception|override|bypass|skip|anyway|make an exception|trust me|regardless|waive)\b/i
 const RECEIPT_RE = /^\s*\/?(?:receipt|verify|replay|show receipt)\s+([0-9a-f]{6,64})\b/i
-const STATUS_RE = /^\s*\/?(?:vault\s*status|status|vaults?|show vaults?|list vaults?)(?:\s+(?:of|for)\s+(?:the\s+)?(.+?)(?:\s+vault)?)?\s*[.!?]*\s*$/i
+// "of"/"for" are optional: a judge types "vault status arc", not "status of the arc vault".
+const STATUS_RE = /^\s*\/?(?:vault\s*status|status|vaults?|show vaults?|list vaults?)(?:\s+(?:of\s+|for\s+)?(?:the\s+)?(.+?)(?:\s+vault)?)?\s*[.!?]*\s*$/i
 const STATUS_ALT_RE = /^\s*(?:how is|how's|what about)\s+(?:the\s+)?(.+?)(?:\s+vault)?\s*[.!?]*\s*$/i
-const HELP_RE = /^\s*\/?(?:start|help|hi|hello|hey|what can you do|\?)\s*[.!?]*\s*$/i
+// A greeting may precede the question: "hey what can you do" must not fall through.
+const HELP_RE = /^\s*\/?(?:(?:hi|hey|hello|yo|gm)\b[,\s]*)?(?:start|help|what can you do|what can i do|what do you do|who are you|\?)\s*[.!?]*\s*$/i
+const GREETING_RE = /^\s*(?:hi|hey|hello|yo|gm)\s*[.!?]*\s*$/i
 const POLICY_RE = /\b(never|always|only|keep|at all times|no more than|at most|at least|max(?:imum)?|min(?:imum)?|liquid|paused|whitelist|cleared|testnet|mainnet|chain|vault|%)\b/i
 
 export function parseIntent(raw: string, hasLastAction: boolean): Intent {
   const text = raw.trim()
   if (!text) return { kind: 'unknown', text }
-  if (HELP_RE.test(text)) return { kind: 'help' }
+  if (HELP_RE.test(text) || GREETING_RE.test(text)) return { kind: 'help' }
 
   const receipt = text.match(RECEIPT_RE)
   if (receipt) return { kind: 'get_receipt', id: receipt[1]! }

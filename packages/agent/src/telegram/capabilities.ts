@@ -210,6 +210,20 @@ export async function vaultStatus(args: { vault?: string | undefined }, deps: Ca
   return lines.join('\n')
 }
 
+/**
+ * The reply to something we could not parse. Deliberately SHORT: the full help
+ * text repeated after every stray message is a wall, and a judge poking the bot
+ * sees it three times in a row.
+ */
+export function nudge(): string {
+  return [
+    "I didn't catch that.",
+    '',
+    'Try a policy in plain English, or "Deposit 5,000 USDC into the BSC vault", or "vault status".',
+    'Say "help" for everything I can do.',
+  ].join('\n')
+}
+
 export function help(): string {
   return [
     'Mandate — the treasury agent that can say no.',
