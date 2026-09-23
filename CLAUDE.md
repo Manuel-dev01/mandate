@@ -175,7 +175,7 @@ Tests: `*.unit.test.ts` never touch the network; `*.integration.test.ts` hit liv
 
 - **Frozen:** `mandate/` (no new rule types, no predicate changes, nothing that moves a hash or a schema), `audit/`, `ixs/`, `serv/`, the routes of `console/api.ts`, `monetize/`, and the route structure of `packages/web`.
 - **Still allowed:** a fix for anything that breaks one of the six beats; wording and copy; docs; rehearsal tooling under `scripts/`, which is not on the product surface.
-- **Push discipline:** one push to `master` redeploys *both* services and takes the Telegram poller down for ~60–90 s. **Never push during a rehearsal run or a recording.** Batch fixes between takes.
+- **Push discipline:** one push to `master` redeploys *both* services; the build runs for a couple of minutes and the bot then goes unanswerable across the container swap (~10–30 s observed 23 Sep). **Never push during a rehearsal run or a recording.** Batch fixes between takes.
 - **Before every run or take:** `node scripts/preflight.mjs` must say READY. It checks the bot is polling and alone, IXS is live rather than stale (stale facts turn beat 2's ALLOW into a REFUSE), the facilitator is up, the buyer is funded, the paywall answers 402, every console route is 200 and warm, and nothing scrolls sideways at 390px.
 
 **Two rails, one document.** The report sells through our own x402 on Base Sepolia (the demo path) and through OpenServ's x402 marketplace, where their rail settles USDC on Base **mainnet**. Both are fulfilled by the same agent and return byte-identical bytes — verified 22 Sep (RECON §6.17). Say which rail is which; never blur them.

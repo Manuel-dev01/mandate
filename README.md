@@ -137,7 +137,7 @@ MANDATE_API_KEY=… node scripts/preflight.mjs         # READY or not: the gate 
 
 **Live** (D1–D10 shipped). Console: <https://mandate-console-five.vercel.app> · Agent API: <https://agent-production-d238.up.railway.app/health> · Bot: [@mandaeteBot](https://t.me/mandaeteBot).
 
-**Deploys.** Both services deploy from GitHub: a push to `master` rebuilds the console on Vercel (root directory `packages/web`) and the agent on Railway. That also means a push takes the Telegram bot down for ~60–90 s while the new container boots — so never push during a demo or a rehearsal run (RECON §6.16). `node scripts/watch-deploys.mjs` prints a line whenever either one changes state.
+**Deploys.** Both services deploy from GitHub: a push to `master` rebuilds the console on Vercel (root directory `packages/web`) and the agent on Railway. That also means a push makes the Telegram bot briefly unanswerable when the new container swaps in — so never push during a demo or a rehearsal run (RECON §6.16). `node scripts/watch-deploys.mjs` prints a line whenever either one changes state.
 
 **Deploy.** Railway: a service from this repo with `packages/agent/Dockerfile`, a volume at `/data`, and `SERV_API_KEY`, `TELEGRAM_BOT_TOKEN`, `AGENT_PRIVATE_KEY` (burner) set — one replica only, because two Telegram pollers conflict. Vercel: root directory `packages/web`, `MANDATE_API_URL` pointing at the Railway URL.
 
