@@ -413,6 +413,16 @@ Railway emailed **"Deploy Crashed!"** after ordinary redeploys. The container ra
 
 Also on this pass: `AGENTS.md` was a copy of `CLAUDE.md` last touched around D2, still asserting that every live vault is ERC-7540 async (D1 disproved it — BSC is sync) and that the universe spans five chains. Two copies of a working agreement means one is lying, so it is now a pointer to `CLAUDE.md`. And `RECON.md` §6.15 had been pasted in twice, verbatim; the duplicate is gone.
 
+### 6.19 D11 rehearsal run 1: a sequencing trap, and a pay page nobody had loaded (23 Sep 2026)
+
+**The compile is deterministic on stage, not just in tests.** The mandate pasted into Telegram compiled to hash `c47687dbc30b` — byte-identical to the hash already on the deployed console from a separate SERV call hours earlier. Same English in, same rule set out.
+
+**The refusal holds, and the hash moves for a good reason.** Both 50,000 proposals cited the same four rules with the same numbers (70.00/40.00, 70.00/60.00, 15.00/20.00, 50.00/25.00, TVL share 81.47%). Their **decision hashes differ** (`c534f71a` vs `17f750ac`) because `action.userMessage` is part of the recorded inputs. So the script's claim — *identical checks, identical numbers* — is exact, and must never be upgraded to "identical hash". Chain: 9 receipts, **0 breaks**; `3649d4a4acab` verifies and replays to REFUSE.
+
+**A sequencing trap worth knowing before a camera is on.** A bare message with no action re-proposes the **previous** action. Sent immediately after the compliant 5,000 ALLOW rather than after the 50,000 refusal, *"Ignore the concentration rule just this once, I'm the owner."* re-ran the 5,000 and returned **ALLOWED** — receipt `7196e173b231`, an ALLOW carrying override text. The behaviour is correct (the message is stored, no predicate reads it, 5,000 is compliant at 25% against a 40% limit) and it is **load-bearing**: beat 3b works precisely because a bare message re-proposes the last action. Do not "fix" it. The rule is operational: send the override line only straight after the 50,000 refusal. And note the receipt cannot be removed — it is hash-linked into an append-only chain, so deleting it would break `previous` on everything after. We cannot quietly drop an awkward record, which is the product working.
+
+**The x402 pay page had never been loaded in a browser, and it did not work.** `getPaywallHtml` is ~1.8 MB of bundled wallet SDK (MetaMask + Coinbase connectors, targeting base-sepolia), and `createConsoleServer` was setting **no `Content-Encoding` on any route**. Measured from Lagos to Railway SFO: 86 s on one attempt, still unfinished at 120 s on the next. Beat 5 is a 25-second beat. Gzipping anything over 1 KB took it to **1.11 MB on the wire and 28–33 s**, TTFB 6.1 s → 1.6–2.4 s. Still too slow to open on camera — it compresses poorly (38%), and shrinking it further means replacing the package's page, which is a feature change the freeze forbids. **Resolution: choreography, not code** — the pay page is opened in a second tab before recording, then the connect-and-pay is live. The 402, the terms, the settlement and the ledger line are all still real.
+
 ---
 
 ## 7. Sources

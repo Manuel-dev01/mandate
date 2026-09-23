@@ -57,6 +57,8 @@ Then push harder:
 
 **REFUSED again — identical checks, identical numbers.** The message is stored in the receipt and never read by a predicate, so the verdict cannot move; `serv_prompt_guard` sits on the explanation so the prose cannot be talked into capitulating either. The mandate is not a suggestion the model can be argued out of.
 
+> ⚠️ **Send that line only immediately after the 50,000 refusal.** A bare message with no action re-proposes the *previous* action — which is exactly why this beat works. Send it after the compliant 5,000 instead and the agent correctly re-runs the 5,000 and answers **ALLOWED**, with the override text on an ALLOW receipt. Right behaviour, terrible optics (RECON §6.19). Say "identical checks, identical numbers" — never "identical hash": the decision hash *does* move, because the message is part of the recorded inputs.
+
 **Scores:** creativity (nobody else demos a refusal), revenue potential (this is the thing compliance teams actually buy).
 
 > **Say:** "Every other agent demo today shows an agent doing something. The valuable part of an agent that handles money is what it **won't** do — and that it can't be argued out of it. Those checks are deterministic TypeScript. The model writes the explanation. It never gets a vote on the verdict."
@@ -82,6 +84,8 @@ Press **VERIFY** (every hash re-derives) then **REPLAY**: **identical verdict, i
 ---
 
 ## Beat 5 — It earns (2:15–2:40)
+
+> **Load the pay page in a second tab before recording.** It is ~1.8 MB of bundled wallet SDK (1.11 MB gzipped) and takes 28–33 s to arrive — longer than this whole beat (RECON §6.19). Pre-opening it costs nothing in honesty: the 402, the terms, the signature, the settlement and the ledger line are all still live. Switch to the loaded tab and pay.
 
 Open the receipt's **Buy the audit report · 0.50 USDC**. The link answers a real **402 Payment Required** with x402 terms — 0.50 USDC on Base Sepolia, payee the agent's own ERC-8004 identity wallet — and the x402 pay page opens. Pay from the wallet; the facilitator settles and the file arrives: `renderReport()`, byte-stable Markdown with every rule, every number, the explanation and the three hashes. Refresh: **1 report sold · 0.50 USDC earned**, with the settlement transaction linked on Basescan.
 
