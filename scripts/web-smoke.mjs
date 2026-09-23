@@ -79,5 +79,10 @@ for (const [path, sentinel] of pages) {
   }
 }
 
+// The console is opened on phones. scripts/overflow-check.mjs drives Chrome over
+// CDP, so it lives apart from this dependency-free smoke; point at it rather than
+// let a green smoke imply the phone was checked.
+console.log('\nPHONE  node scripts/overflow-check.mjs  — asserts no route scrolls sideways at 390px')
+
 console.log(failed ? `\n${failed} failed\n` : '\nall good\n')
 process.exit(failed ? 1 : 0)
