@@ -37,7 +37,7 @@ Confirmed by live probe on 13 Sep 2026. `docs/RECON.md` holds the raw evidence.
 - **There is no Base Sepolia vault.** Any plan, doc, or memory referencing Base Sepolia for IXS is wrong.
 - **REST `GET /vaults` is the source of truth for vault IDs.** MCP `vaults_list` returns only **1 of the 5** vaults (D1 probe, stable 3/3 — RECON §6.1). `ixs.listVaults()` uses REST and reports the MCP gap as `divergence`.
 
-### The live vault universe (5 vaults, 5 chains)
+### The live vault universe (5 vaults, 4 chains)
 
 | Vault | id | Chain | Asset | Whitelist |
 |---|---|---|---|---|
@@ -47,6 +47,7 @@ Confirmed by live probe on 13 Sep 2026. `docs/RECON.md` holds the raw evidence.
 | t_ix7540v1 | `6a8ebe8e732c2b84b55ce88c` | BSC testnet (97) | USDC | **YES** |
 | IXHYB - Robinhood | `6a8832289e7fddf1f49e6f51` | **Robinhood Chain MAINNET (4663)** | **USDG** | no |
 
+- **Five vaults, but only FOUR distinct chains** — `IXHYB - BSC` and `t_ix7540v1` both sit on BSC testnet (97). `vaultsView` counts distinct `chainId`, so the console says 4; prose that says "five chains" is wrong and contradicts our own live page. Corrected 23 Sep.
 - **Primary dev target: Avalanche Fuji** (`6a952683732c2b84b55ce89b`) — for **reads and redeem builds**. See the deposit-cap blocker below.
 - **`t_ix7540v1` requires a whitelist** — this is our *real*, non-contrived refusal demo. Never fake a refusal when a genuine one exists.
 - **IXHYB - Robinhood is MAINNET with real USDG.** Reads and plans only. **Never send a write transaction to chain 4663** unless the user explicitly approves that specific action in that specific session.
@@ -167,6 +168,15 @@ scripts/        smoke.mjs (live integrations) · web-smoke.mjs (API + console ro
 | deploy | Railway (agent) and Vercel (console), both from GitHub `master`; `scripts/watch-deploys.mjs` prints only state changes | D10 ✅ |
 
 Tests: `*.unit.test.ts` never touch the network; `*.integration.test.ts` hit live IXS/SERV/RPC and cost a few `gpt-5.4-mini` calls. Rehearsal: `npm run act -- deposit 5000` (ALLOW → receipt), `npm run act -- deposit 50000 --message "…"` (REFUSE → receipt), `npm run receipt -- list|show|verify|replay|export`.
+
+### 🔒 Feature freeze — D11, 24 Sep
+
+**The build is closed.** What remains is rehearsal, the recording, and submission.
+
+- **Frozen:** `mandate/` (no new rule types, no predicate changes, nothing that moves a hash or a schema), `audit/`, `ixs/`, `serv/`, the routes of `console/api.ts`, `monetize/`, and the route structure of `packages/web`.
+- **Still allowed:** a fix for anything that breaks one of the six beats; wording and copy; docs; rehearsal tooling under `scripts/`, which is not on the product surface.
+- **Push discipline:** one push to `master` redeploys *both* services and takes the Telegram poller down for ~60–90 s. **Never push during a rehearsal run or a recording.** Batch fixes between takes.
+- **Before every run or take:** `node scripts/preflight.mjs` must say READY. It checks the bot is polling and alone, IXS is live rather than stale (stale facts turn beat 2's ALLOW into a REFUSE), the facilitator is up, the buyer is funded, the paywall answers 402, every console route is 200 and warm, and nothing scrolls sideways at 390px.
 
 **Two rails, one document.** The report sells through our own x402 on Base Sepolia (the demo path) and through OpenServ's x402 marketplace, where their rail settles USDC on Base **mainnet**. Both are fulfilled by the same agent and return byte-identical bytes — verified 22 Sep (RECON §6.17). Say which rail is which; never blur them.
 

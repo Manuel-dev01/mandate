@@ -375,41 +375,15 @@ Facts worth keeping:
 
 **Buyer note:** the buyer needs **no ETH** — only USDC. The facilitator pays the gas and submits the EIP-3009 authorization. Our rehearsal buyer `0x20fAd5B53f16A61B86e71580D959008899fA82CE` has 0 ETH and bought successfully.
 
-### 6.15 Monetization: x402 on Base Sepolia, listed on OpenServ, ERC-8004 identity (22 Sep 2026)
-
-**Probed before writing any code.** `triggers.x402({...})` takes `name, description, price, input, timeout, walletAddress` - **no network option**; `client.payments.payWorkflow` builds `createSigner("base", key)` and reports `network: "base", chainId: 8453`, so **OpenServ x402 settles real USDC on Base mainnet**. Two live OpenServ x402 triggers were probed directly: neither answered within 25 s, one returned Cloudflare **524**. Meanwhile `GET https://x402.org/facilitator/supported` lists `{scheme:"exact", network:"eip155:84532"}` - the **public facilitator settles Base Sepolia**, free.
-
-**Decision (user): do both.** The service is listed on OpenServ (marketplace presence, real paywall URL, an `export_report` capability on agent 4509 fulfils it) and the demo is paid through **our own x402 on Base Sepolia**, so beat 5 never depends on their slow endpoint or on real money.
-
-Implementation: `monetize/x402.ts` (`reportRequirements`, `settlementOf` -> `paid | invalid | facilitator-down`), the paywall on `GET /receipts/:id/report` in `console/api.ts`, `audit/exports.ts` (append-only `exports.jsonl`, written **only** after a confirmed settlement), `monetize/service.ts` (`/x402` facts + `getPaywallHtml` pay page), `bin/buy.ts`, `bin/identity.ts`. The console key does **not** unlock the report - only `?preview=1` (40 labelled lines) is free.
-
-Facts worth keeping:
-- Base Sepolia USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e`; price `0.50` -> `500000` base units; payee = the provision wallet `0xEAbc...13`, which is also the ERC-8004 identity.
-- `wrapFetchWithPayment(fetch, signer)` caps spend at **0.10 USDC** by default - a 0.50 price fails with `Payment amount exceeds maximum allowed` until you pass `maxValue`. `bin/buy.ts` passes the seller's own `maxAmountRequired`.
-- Verified end to end locally: the buyer signs, the facilitator **verifies**, and rejects only with `invalid_exact_evm_insufficient_balance` on an unfunded burner - every step before the money is proven.
-- `@openserv-labs/client` 2.5.3 requires `workflow.goal` on `provision()` / `workflows.create` (1.1.4 did not) and adds `erc8004.registerOnChain` with testnet chain ids (84532 among them).
-- A facilitator outage returns **503** and sells nothing; a rejected payment returns 402 again with the facilitator's own reason.
-
-**Done, on-chain, 22 Sep:**
-
-| | |
-|---|---|
-| First sale | `0x083f9ae8e12792e6d9e00447409b564793c2c84ecf96b404985b6dc76705da1d` — 0.50 USDC, buyer `0x20fAd5B5…82CE` → payee `0xEAbc…13`, report delivered byte-identical to `renderReport` |
-| ERC-8004 identity | **`84532:9316`** on Base Sepolia, registry `0x8004A818BFB912233c491871b3d84c89A494BD9e`, owner `0xEAbc…13`, tx `0xcfcff628…0806`, [8004scan](https://www.8004scan.io/agents/base-sepolia/9316) |
-| Token URI | `https://agent-production-d238.up.railway.app/.well-known/agent-card.json` — served live by the agent itself, listing the paid report, the API, the console, Telegram and the wallet |
-| OpenServ listing | workflow **13897**, trigger `b03cd363-…`, token `dbcfc382…`, 0.50 USDC, **active and listed on their marketplace**. Note: the platform **overrides** the `walletAddress` we pass with the workspace wallet `0xD840924D…243D` (still ours, platform-managed), so the listing's payee differs from our own paywall's payee (`0xEAbc…13`, the ERC-8004 identity). The console shows our payee for our paywall and does not claim it for theirs. |
-
-**What bit on the platform:** (1) `workflows.create` rejects a short goal with `INVALID_PROJECT_GOAL` — the goal must describe a concrete deliverable. (2) The workspace wallet for 13893 came pre-stamped with `erc8004AgentId: "8453:999999918"` and `deployed: true`, a **placeholder that does not exist on Base mainnet either**, which makes `registerOnChain` take the update path and revert on `tokenURI`. `erc8004.deploy({ erc8004AgentId: '' })` clears `deployed` but not the id. (3) A fresh workspace (13897) avoids that, but its `PUT /workspaces/13897/erc-8004/presign-ipfs-url` returns **500** with an error id (13893's presign works), so their IPFS path is unusable for a new workspace. **Resolution:** register directly — `register(string agentURI)` on the registry with our own live agent card as the URI. One transaction, no IPFS, and the identity points at something anyone can fetch from the running agent. `npm run identity --via-openserv` still tries their path.
-
-**Buyer note:** the buyer needs **no ETH** — only USDC. The facilitator pays the gas and submits the EIP-3009 authorization. Our rehearsal buyer `0x20fAd5B53f16A61B86e71580D959008899fA82CE` has 0 ETH and bought successfully.
-
 ### 6.16 Deploys from GitHub, and why every redeploy looked like a crash (22 Sep 2026)
 
 Railway emailed **"Deploy Crashed!"** after ordinary redeploys. The container ran the service as `npm run serve`, and on SIGTERM npm reports `Lifecycle script serve failed … signal SIGTERM` and exits non-zero — our own shutdown handler never ran. Fix: `CMD ["node", "--import", "tsx", "src/bin/serve.ts"]` with `WORKDIR /app/packages/agent`, so the signal reaches the process that knows how to stop. The bot also sat in a 25-second long poll during shutdown; `stop()` now aborts the in-flight request and the aborted poll is not logged as an error.
 
 **Vercel deploys from GitHub** (`Manuel-dev01/mandate`, master): already connected, but the project's **Root Directory was `.`**, so the first git-triggered build failed — the live site stayed on the previous good deployment. Set `rootDirectory: "packages/web"` via `PATCH /v9/projects/{id}` (the CLI has no command for it); the next push built and deployed in 48 s.
 
-**Railway is still manual** (`railway up`): `railway service source connect --repo Manuel-dev01/mandate` answers **"User does not have access to the repo"** and the `githubRepos` query returns *Not Authorized* — Railway's GitHub App has not been granted access to the repo. That is a dashboard/GitHub action for the account owner: Railway → the `agent` service → Settings → Source → Connect Repo (installing the Railway GitHub App on `Manuel-dev01/mandate`).
+**Railway now deploys from GitHub too** (resolved 22 Sep, confirmed 23 Sep). It was briefly manual (`railway up`): `railway service source connect --repo Manuel-dev01/mandate` answered **"User does not have access to the repo"** and `githubRepos` returned *Not Authorized*, because Railway's GitHub App had not been installed on the repo. The account owner installed it from the dashboard (Railway → the `agent` service → Settings → Source → Connect Repo). `railway status` now reports `repo: Manuel-dev01/mandate`, and the `903f463` push rebuilt the service on its own.
+
+**Which makes pushing a demo-time concern.** One push to `master` redeploys *both* services, and the agent's redeploy takes the Telegram poller down for roughly 60–90 s while the new container boots and the old one drains. So during a rehearsal run or a recording: do not push. Batch fixes and push between takes.
 
 `scripts/watch-deploys.mjs` polls both deployments and prints only state changes: the agent's `/health` (Telegram poller state, receipts, uptime), the console's root, and the ledger (`receipts · sold · chain breaks`). `MANDATE_API_KEY` is needed for the ledger line; `/health` never is.
 
@@ -428,6 +402,16 @@ Railway emailed **"Deploy Crashed!"** after ordinary redeploys. The container ra
 | x402 facilitator pointed at a dead host, then a real payment attempted | **503**, `nothing was charged; please retry`, **no report served and no sale recorded** — the ledger stayed at 1 |
 | IXS pointed at a dead host, `/vaults` read | 5 vaults served from **disk**, `stale: true`, real `fetchedAt` — no error screen |
 | A full decision with IXS unreachable | Six rules pass on the stale snapshot; **`whitelist_required` refuses — "could not verify"** — because it is never cached. Facts marked STALE, verdict REFUSE, and the explanation says exactly why |
+
+### 6.18 D11 freeze: the preflight gate, and two things the docs had wrong (23 Sep 2026)
+
+**`scripts/preflight.mjs`** is the gate before any rehearsal run or take — zero dependencies, defaults to the deployed services, buys nothing (the paywall check reads the 402 challenge). It asserts: the bot is polling with no `lastError` and a poll inside 60 s (a second poller shows up here as `Conflict`), the OpenServ tunnel is connected, **IXS is live rather than stale**, the Robinhood vault is present, the facilitator offers Base Sepolia, the buyer can still afford a report, the paywall answers 402 with the right terms, every console route is 200 — those requests double as the warm-up — and nothing scrolls sideways at 390 px. First full run, 23 Sep: **READY**, all green.
+
+**The phone check had never covered the two routes that matter most.** `overflow-check.mjs` carried a comment saying the receipt id was "filled in from the API when there is one" — no code did that, and `ROUTES` defaulted to the four static pages. So `/receipts/<id>`, the screen carrying the seven checks with their actual-vs-limit, and `/export/<id>` were outside the D10 assertion. It now fetches `head` from `/health` and appends both. Re-run against the deployed console: **all six routes fit at 390 px**, so the D10 claim holds — it just had not been checked by the default command.
+
+**The vault universe spans FOUR chains, not five.** `IXHYB - BSC` and `t_ix7540v1` are both on BSC testnet (97), so `GET /vaults` reports `chains: 4` — as the code always did, and as `console.unit.test.ts` has asserted all along (`'two vaults share bsc-testnet'`). Only the prose was wrong, in `CLAUDE.md`, `README.md` (twice), `STRATEGY.md` and `MANDATE_DSL.md`, which meant **the deployed console contradicted the README on a number a judge can count**. Corrected everywhere.
+
+Also on this pass: `AGENTS.md` was a copy of `CLAUDE.md` last touched around D2, still asserting that every live vault is ERC-7540 async (D1 disproved it — BSC is sync) and that the universe spans five chains. Two copies of a working agreement means one is lying, so it is now a pointer to `CLAUDE.md`. And `RECON.md` §6.15 had been pasted in twice, verbatim; the duplicate is gone.
 
 ---
 

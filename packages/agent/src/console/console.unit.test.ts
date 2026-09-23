@@ -229,7 +229,7 @@ test('GET /receipts, /stats, /mandate, /health', async () => {
   assert.ok(preview.body.includes('The full report is 0.50 USDC over x402.'), 'the free part says it is a preview')
 })
 
-test('GET /vaults — five vaults, five chains, a failed state read degrades one row', async () => {
+test('GET /vaults — five vaults, four chains, a failed state read degrades one row', async () => {
   const { store } = seeded()
   const h = createConsoleHandler(
     deps(store, {

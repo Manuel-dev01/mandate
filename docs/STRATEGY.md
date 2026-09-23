@@ -219,7 +219,7 @@ The `.env.example` in `IXS-Finance/ixs-rwa-agent-skills` is **stale**:
 
 **Action:** retarget to the live vault set below. Never trust that `.env.example` again; treat `vaults_list` as the source of truth.
 
-## ✅ The live vault set (`GET /vaults` — 5 active vaults, 5 chains)
+## ✅ The live vault set (`GET /vaults` — 5 active vaults, 4 chains)
 
 | Vault | id | Chain | Asset | Whitelist |
 |---|---|---|---|---|
@@ -244,7 +244,7 @@ The Mainnet & MCP track reads: *"Agents that **act on Robinhood Chain** OR opera
 
 ## 🏆 STRATEGIC UPGRADE: cross-chain concentration is REAL
 
-With 5 live vaults across 5 chains, Mandate's concentration and diversification rules operate on a **genuine multi-chain vault universe** — not a simulated one. This was the weakest part of the concept and it is now the strongest. Mandate becomes a real cross-chain RWA treasury allocator.
+With 5 live vaults across 4 distinct chains, Mandate's concentration and diversification rules operate on a **genuine multi-chain vault universe** — not a simulated one. This was the weakest part of the concept and it is now the strongest. Mandate becomes a real cross-chain RWA treasury allocator.
 
 ## ✅ IXS MCP verified live and **unauthenticated**
 

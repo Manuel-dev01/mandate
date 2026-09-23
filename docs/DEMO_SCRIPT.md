@@ -85,7 +85,7 @@ Press **VERIFY** (every hash re-derives) then **REPLAY**: **identical verdict, i
 
 Open the receipt's **Buy the audit report · 0.50 USDC**. The link answers a real **402 Payment Required** with x402 terms — 0.50 USDC on Base Sepolia, payee the agent's own ERC-8004 identity wallet — and the x402 pay page opens. Pay from the wallet; the facilitator settles and the file arrives: `renderReport()`, byte-stable Markdown with every rule, every number, the explanation and the three hashes. Refresh: **1 report sold · 0.50 USDC earned**, with the settlement transaction linked on Basescan.
 
-*(The same report is also listed as a paid service on OpenServ's x402 marketplace, fulfilled by the same agent. OpenServ settles Base mainnet in real USDC and its trigger endpoints were timing out on 22 Sep, so the stage payment goes through our own paywall — RECON §6.15.)*
+*(The same report is also listed as a paid service on OpenServ's x402 marketplace, and that rail **is** fulfillable: firing their trigger returned the identical document, byte for byte, from this same agent — RECON §6.17. The stage payment goes through our own paywall because theirs settles real USDC on Base **mainnet**, not because it might fail. Say which rail is which; never blur them.)*
 
 **Scores:** revenue potential, live and literal.
 
@@ -107,8 +107,10 @@ Close on the agent's **ERC-8004 identity** on 8004scan.io.
 
 ## Rehearsal standard (D11–D13)
 
-- Three consecutive clean runs, cold start, fresh browser profile.
-- **Check the console at phone width too** (`node scripts/overflow-check.mjs`): no route may scroll sideways, and every check's actual-vs-limit must be readable without panning. Judges open links on phones.
+- **`node scripts/preflight.mjs` must say READY before every run and every take.** It is the gate, and it covers the phone-width check below. The one that most often ruins a take is `facts are live`: if IXS is stale, `whitelist_required` fails closed and **beat 2's ALLOW becomes a REFUSE**.
+- **Never push to `master` during a run or a recording** — it redeploys the agent and the bot stops answering for ~60–90 s.
+- Three consecutive clean runs, cold start, fresh browser profile. Anything needing a second try resets the count.
+- **Check the console at phone width too** (`node scripts/overflow-check.mjs`, or just run preflight): no route may scroll sideways, and every check's actual-vs-limit must be readable without panning. Judges open links on phones.
 - Every number on screen is live — vault state, whitelist, TVL — **except** the portfolio, which is the declared seed and is labelled `declared` on every receipt. Never call it live.
 - **Record the video first, demo live second.** The recording is the submission; a live run is a bonus.
 - Kill every notification, tab, and bookmark bar before recording.

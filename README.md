@@ -26,7 +26,7 @@ Mandate treats an investment policy as an **executable compliance contract**, no
 
 1. **Write the mandate in English.** *"Preserve capital. Never exceed 40% in a single vault. Keep a 20% liquidity buffer. Only enter vaults this wallet is cleared for. Never touch a paused vault."*
 2. **It compiles to rules.** SERV Reasoning turns the prose into a typed, versioned rule set you can read and diff.
-3. **It decides.** Every proposed deposit or redemption across IXS licensed RWA vaults on five chains — including Robinhood Chain — is checked against the rules using live vault state and the live whitelist.
+3. **It decides.** Every proposed deposit or redemption across IXS licensed RWA vaults on four chains — including Robinhood Chain — is checked against the rules using live vault state and the live whitelist.
 4. **It refuses.** When an instruction would breach the mandate, Mandate declines and cites the exact clause and the exact numbers.
 5. **It proves it.** Every decision — allowed or refused — emits a hash-anchored receipt showing the inputs, the rules evaluated, the verdict, and the reasoning.
 
@@ -71,7 +71,7 @@ Execution (signer, plan → run) exists as dormant code: IXS vaults are not open
 | Layer | Technology |
 |---|---|
 | Reasoning | **SERV Reasoning** — `serv_shadow_agent` validation, `serv_prompt_guard` injection defence |
-| Yield | **IXS** licensed RWA vaults — 5 vaults across 5 chains; four settle async (ERC-7540), IXHYB-BSC settles sync (ERC-4626) |
+| Yield | **IXS** licensed RWA vaults — 5 vaults across 4 chains (two share BSC testnet); four settle async (ERC-7540), IXHYB-BSC settles sync (ERC-4626) |
 | Chains | Avalanche Fuji, BSC testnet, Arc testnet, **Robinhood Chain mainnet** |
 | Interaction | Telegram bot — deterministic intent parser, exact-text replies; also registered as an OpenServ agent |
 | Proof | Next.js audit console |
@@ -107,6 +107,7 @@ The buyers are the ones IXS already sells to — broker-dealers, RIAs, fintechs 
 | D8 | The console: landing (the newest refusal resolving row by row), chain, receipt in full with verify/replay, mandate with clause provenance and fired counts, live vault universe, export — every screen with empty, loading and unreachable states | `scripts/web-smoke.mjs`; deployed on Vercel against the Railway agent |
 | D9 | Monetization: the audit report behind a real x402 paywall on Base Sepolia (402 -> pay -> settle -> file), a sales ledger written only on settlement, the same report listed as a paid OpenServ x402 service, and the agent's ERC-8004 identity as the payee | 8 unit + `scripts/web-smoke.mjs` (402 with the right terms, labelled free preview); a real purchase with `npm run buy` |
 | D10 | Polish: every table folds instead of scrolling sideways on a phone (the check numbers are the product); the decision history charted from our own chain, because the vault subgraphs stopped updating weeks ago; the OpenServ rail connected and proven to return the identical document; three failure drills | `scripts/overflow-check.mjs` (CDP, asserts no route scrolls sideways at 390px); 112 unit tests; drills in RECON §6.17 |
+| D11 | 🔒 Feature freeze. One command gates every rehearsal run and every take: the bot polling and alone, IXS live rather than stale, the facilitator up, the buyer funded, the paywall answering 402, every console route 200 and warm, nothing scrolling sideways. Plus the record corrected — the vault set spans **four** chains, not five, which the code always knew and the prose did not | `scripts/preflight.mjs` → READY, green against the deployed stack; phone check extended to the receipt and export routes; RECON §6.18 |
 
 Full evidence for every live-verified constant lives in [`docs/RECON.md`](docs/RECON.md).
 
@@ -131,11 +132,12 @@ npm run agent --workspace=agent                      # optional: run that platfo
 npm run dev --workspace=web                          # the console on :3000, reading MANDATE_API_URL (default http://localhost:8787)
 node scripts/web-smoke.mjs                           # every API route and console page answers with real data
 node scripts/overflow-check.mjs                      # no console route scrolls sideways at phone width
+MANDATE_API_KEY=… node scripts/preflight.mjs         # READY or not: the gate before any rehearsal run or recording
 ```
 
 **Live** (D1–D10 shipped). Console: <https://mandate-console-five.vercel.app> · Agent API: <https://agent-production-d238.up.railway.app/health> · Bot: [@mandaeteBot](https://t.me/mandaeteBot).
 
-**Deploys.** The console deploys from GitHub: a push to `master` rebuilds it on Vercel (root directory `packages/web`). The agent is still `railway up` until Railway's GitHub App is granted access to the repo (RECON §6.16). `node scripts/watch-deploys.mjs` prints a line whenever either one changes state.
+**Deploys.** Both services deploy from GitHub: a push to `master` rebuilds the console on Vercel (root directory `packages/web`) and the agent on Railway. That also means a push takes the Telegram bot down for ~60–90 s while the new container boots — so never push during a demo or a rehearsal run (RECON §6.16). `node scripts/watch-deploys.mjs` prints a line whenever either one changes state.
 
 **Deploy.** Railway: a service from this repo with `packages/agent/Dockerfile`, a volume at `/data`, and `SERV_API_KEY`, `TELEGRAM_BOT_TOKEN`, `AGENT_PRIVATE_KEY` (burner) set — one replica only, because two Telegram pollers conflict. Vercel: root directory `packages/web`, `MANDATE_API_URL` pointing at the Railway URL.
 

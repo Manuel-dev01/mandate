@@ -24,8 +24,25 @@ const CHROME =
   process.env.CHROME ??
   ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/usr/bin/chromium'].find((p) => existsSync(p))
 
-/** The routes that matter, with a receipt id filled in from the API when there is one. */
-const routes = process.env.ROUTES ? process.env.ROUTES.split(',') : ['/', '/chain', '/mandate', '/vaults']
+const API = (process.env.API ?? 'https://agent-production-d238.up.railway.app').replace(/\/+$/, '')
+
+/**
+ * The routes that matter. The receipt page carries the seven checks with their
+ * actual-vs-limit — the numbers beat 3 is about — so it must be covered, not
+ * just the four static pages; its id comes from the agent's own head.
+ */
+async function resolveRoutes() {
+  if (process.env.ROUTES) return process.env.ROUTES.split(',')
+  const base = ['/', '/chain', '/mandate', '/vaults']
+  try {
+    const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(15_000) })
+    const head = (await res.json())?.head
+    return head ? [...base, `/receipts/${head}`, `/export/${head}`] : base
+  } catch {
+    console.log(`  (no head from ${API} — checking the four static routes only)`)
+    return base
+  }
+}
 
 // ----------------------------------------------------------- tiny WS client
 
@@ -207,6 +224,7 @@ const main = async () => {
 
   let failed = 0
   let id = 0
+  const routes = await resolveRoutes()
   console.log(`\n${WEB} at ${WIDTH}px\n`)
 
   for (const route of routes) {

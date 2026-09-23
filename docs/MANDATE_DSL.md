@@ -33,7 +33,7 @@ Ceiling on exposure to any one chain. Distinct from vault concentration: three v
 ```
 *"No more than 60% of the book on any single chain."*
 **Refuses when:** post-action chain exposure > `maxPct`.
-**Why it matters:** only expressible because the live vault set genuinely spans five chains.
+**Why it matters:** only expressible because the live vault set genuinely spans four chains.
 
 ### 3. `min_liquidity_buffer`
 Floor on unallocated assets held back from deployment.
