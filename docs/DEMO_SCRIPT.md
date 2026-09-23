@@ -108,6 +108,7 @@ Close on the agent's **ERC-8004 identity** on 8004scan.io.
 ## Rehearsal standard (D11–D13)
 
 - Three consecutive clean runs, cold start, fresh browser profile.
+- **Check the console at phone width too** (`node scripts/overflow-check.mjs`): no route may scroll sideways, and every check's actual-vs-limit must be readable without panning. Judges open links on phones.
 - Every number on screen is live — vault state, whitelist, TVL — **except** the portfolio, which is the declared seed and is labelled `declared` on every receipt. Never call it live.
 - **Record the video first, demo live second.** The recording is the submission; a live run is a bonus.
 - Kill every notification, tab, and bookmark bar before recording.
