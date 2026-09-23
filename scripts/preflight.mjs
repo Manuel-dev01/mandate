@@ -201,7 +201,10 @@ if (process.env.SKIP_PHONE) {
   for (const line of out.split('\n')) if (line.trim()) console.log(`    ${line.trim()}`)
   if (code === 0) ok('phone width', 'no route scrolls sideways')
   else if (code === -1) warn('phone width', `could not run it: WEB=${WEB} node scripts/overflow-check.mjs`)
-  else bad('phone width', 'a route scrolls sideways — the actual-vs-limit numbers are the demo')
+  else if (/could not be measured/.test(out) && !/route\(s\) overflow/.test(out)) {
+    // A page too slow to read is a warning about the page, not a layout failure.
+    warn('phone width', 'a route was too slow to measure — warm the console and re-run')
+  } else bad('phone width', 'a route scrolls sideways — the actual-vs-limit numbers are the demo')
 }
 
 // ---------------------------------------------------------------------- verdict

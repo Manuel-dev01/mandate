@@ -20,6 +20,7 @@ const WEB = (process.env.WEB ?? 'http://localhost:3000').replace(/\/+$/, '')
 const WIDTH = Number(process.env.WIDTH ?? 390)
 const HEIGHT = Number(process.env.HEIGHT ?? 844)
 const PORT = Number(process.env.CDP_PORT ?? 9222)
+const NAV_TIMEOUT = Number(process.env.NAV_TIMEOUT ?? 90_000)
 const CHROME =
   process.env.CHROME ??
   ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/usr/bin/chromium'].find((p) => existsSync(p))
@@ -124,9 +125,9 @@ class Ws {
     this.sock.write(Buffer.concat([header, mask, masked]))
   }
   /** Sends and waits for the matching id, ignoring CDP events in between. */
-  call(id, method, params = {}) {
+  call(id, method, params = {}, timeoutMs = 45_000) {
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`${method} timed out`)), 45_000)
+      const timer = setTimeout(() => reject(new Error(`${method} timed out after ${timeoutMs}ms`)), timeoutMs)
       const want = (payload) => {
         let msg
         try {
@@ -223,6 +224,7 @@ const main = async () => {
   }
 
   let failed = 0
+  let errored = 0
   let id = 0
   const routes = await resolveRoutes()
   console.log(`\n${WEB} at ${WIDTH}px\n`)
@@ -234,14 +236,28 @@ const main = async () => {
     try {
       await ws.call(++id, 'Page.enable')
       await ws.call(++id, 'Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true })
-      await ws.call(++id, 'Page.navigate', { url: `${WEB}${route}` })
-      await sleep(Number(process.env.SETTLE ?? 3500))
+      // The console renders on the server with force-dynamic, and a cold receipt page
+      // has taken 14 s to answer (RECON §6.18) — so give navigation room, then wait for
+      // the document to actually be ready rather than sleeping a fixed guess at it.
+      await ws.call(++id, 'Page.navigate', { url: `${WEB}${route}` }, NAV_TIMEOUT)
+      const readyBy = Date.now() + NAV_TIMEOUT
+      let ready = null
+      while (Date.now() < readyBy) {
+        await sleep(400)
+        const { result } = await ws.call(++id, 'Runtime.evaluate', { expression: 'document.readyState', returnByValue: true })
+        ready = result.value
+        if (ready === 'complete') break
+      }
+      if (ready !== 'complete') throw new Error(`document never reached readyState complete (stuck at ${ready})`)
+      // Let fonts and the entrance animations land before measuring.
+      await sleep(Number(process.env.SETTLE ?? 1500))
       if (process.env.SHOT) {
         const shot = await ws.call(++id, 'Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
         const name = route === '/' ? 'home' : route.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
         writeFileSync(`${process.env.SHOT}/${name}.png`, Buffer.from(shot.data, 'base64'))
       }
       const { result } = await ws.call(++id, 'Runtime.evaluate', { expression: PROBE, returnByValue: true })
+      if (typeof result.value !== 'string') throw new Error(`probe returned ${result.type} — page context gone?`)
       const { vw, sw, offenders } = JSON.parse(result.value)
       if (sw > vw + 1) {
         failed++
@@ -251,16 +267,22 @@ const main = async () => {
         console.log(`  ✓ ${route.padEnd(28)} ${sw}px, fits`)
       }
     } catch (err) {
-      failed++
-      console.log(`  ✗ ${route.padEnd(28)} ${err.message}`)
+      // Could not measure is NOT the same as overflows. Saying "overflow" about a page
+      // we never managed to read would be exactly the kind of unbacked claim this
+      // script exists to catch.
+      errored++
+      console.log(`  ?  ${route.padEnd(28)} could not measure — ${err.message}`)
     } finally {
       ws.close()
     }
   }
 
   chrome.kill()
-  console.log(failed ? `\n${failed} route(s) overflow\n` : '\nno horizontal overflow\n')
-  process.exit(failed ? 1 : 0)
+  const parts = []
+  if (failed) parts.push(`${failed} route(s) overflow`)
+  if (errored) parts.push(`${errored} route(s) could not be measured`)
+  console.log(`\n${parts.length ? parts.join(', ') : 'no horizontal overflow'}\n`)
+  process.exit(failed || errored ? 1 : 0)
 }
 
 main().catch((err) => {
