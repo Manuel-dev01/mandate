@@ -10,6 +10,7 @@
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { gzipSync } from 'node:zlib'
 import { exportLedger, receiptStore, renderReport, replayReceipt, verifyReceipt, type ExportLedger, type Receipt, type ReceiptStore } from '../audit/index.js'
 import { env } from '../env.js'
 import { getVaultState, listVaults, type Snapshot, type VaultUniverse } from '../ixs/index.js'
@@ -233,8 +234,26 @@ export function createConsoleServer(deps: ConsoleDeps = defaultConsoleDeps(), lo
     const started = Date.now()
     const url = new URL(req.url ?? '/', 'http://localhost')
     const send = (status: number, body: string, contentType = 'application/json; charset=utf-8', extra: Record<string, string> = {}) => {
-      res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Access-Control-Expose-Headers': 'X-PAYMENT-RESPONSE', ...extra })
-      res.end(body)
+      const headers: Record<string, string> = {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'Access-Control-Expose-Headers': 'X-PAYMENT-RESPONSE',
+        ...extra,
+      }
+      // The x402 pay page is ~1.8 MB of bundled wallet SDK. Uncompressed over a long
+      // link that took over a minute to arrive, which is longer than beat 5 exists for
+      // (RECON §6.19). Gzip anything big enough to be worth it.
+      let payload: string | Buffer = body
+      const wantsGzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] ?? ''))
+      if (wantsGzip && Buffer.byteLength(body) > 1024) {
+        payload = gzipSync(body)
+        headers['Content-Encoding'] = 'gzip'
+        headers['Vary'] = 'Accept-Encoding'
+      }
+      headers['Content-Length'] = String(Buffer.byteLength(payload))
+      res.writeHead(status, headers)
+      res.end(req.method === 'HEAD' ? undefined : payload)
       log(`${req.method} ${url.pathname} ${status} ${Date.now() - started}ms`)
     }
     try {
