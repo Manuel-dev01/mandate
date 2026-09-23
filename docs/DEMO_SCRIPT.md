@@ -91,6 +91,8 @@ Open the receipt's **Buy the audit report · 0.50 USDC**. The link answers a rea
 
 *(The same report is also listed as a paid service on OpenServ's x402 marketplace, and that rail **is** fulfillable: firing their trigger returned the identical document, byte for byte, from this same agent — RECON §6.17. The stage payment goes through our own paywall because theirs settles real USDC on Base **mainnet**, not because it might fail. Say which rail is which; never blur them.)*
 
+> **Open the delivered file in VS Code or the browser, never Notepad.** The report is UTF-8 and the server says so (`text/markdown; charset=utf-8`, verified on the wire: `→` arrives as `e2 86 92`). A viewer that defaults to Windows-1252 renders every `·` and `→` as `Â·` and `â†’`, which on camera looks like a broken product. Do not "fix" this with a BOM — it would change the bytes and break the byte-identical claim against `renderReport` and the OpenServ rail.
+
 **Scores:** revenue potential, live and literal.
 
 > **Say:** "That's the business model running on stage — a real 402, a real settlement, and a counter that only moves when someone actually paid. Per-report via x402, basis points per rebalance, seats for treasuries running several mandates."

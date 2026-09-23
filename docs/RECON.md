@@ -423,6 +423,10 @@ Also on this pass: `AGENTS.md` was a copy of `CLAUDE.md` last touched around D2,
 
 **The x402 pay page had never been loaded in a browser, and it did not work.** `getPaywallHtml` is ~1.8 MB of bundled wallet SDK (MetaMask + Coinbase connectors, targeting base-sepolia), and `createConsoleServer` was setting **no `Content-Encoding` on any route**. Measured from Lagos to Railway SFO: 86 s on one attempt, still unfinished at 120 s on the next. Beat 5 is a 25-second beat. Gzipping anything over 1 KB took it to **1.11 MB on the wire and 28–33 s**, TTFB 6.1 s → 1.6–2.4 s. Still too slow to open on camera — it compresses poorly (38%), and shrinking it further means replacing the package's page, which is a feature change the freeze forbids. **Resolution: choreography, not code** — the pay page is opened in a second tab before recording, then the connect-and-pay is live. The 402, the terms, the settlement and the ledger line are all still real.
 
+**Beat 5 then ran end to end on the browser path, for the first time.** Buyer wallet imported into MetaMask on Base Sepolia, no ETH held; the pay page connected, the payment signed, the facilitator settled: tx `0x0f479373cf36…`, receipt `3649d4a4acab`, **2 sold / 1.00 USDC earned**, payee `0xEAbc…13`. The delivered file is UTF-8 and arrives clean on the wire (`→` = `e2 86 92`, valid round-trip, no replacement chars) — the `Â·` mojibake seen while reviewing it was a local viewer defaulting to Windows-1252, not the product. This also confirmed the new gzip path is lossless.
+
+**Run 1 is a shakedown, not a clean run.** It found three real things (the sequencing trap, the uncompressed pay page, the phone check's false failure) and needed a code change mid-run. The three-consecutive-clean-runs count starts from zero after this.
+
 ---
 
 ## 7. Sources
