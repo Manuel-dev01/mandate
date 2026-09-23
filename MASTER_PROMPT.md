@@ -2,7 +2,7 @@
 
 Paste **Prompt 1** into a fresh Claude Code session in this folder to begin D1. Later prompts follow the same shape. The standing guardrails block at the bottom gets appended to any prompt that writes OpenServ platform code.
 
-**Status (18 Sep):** Prompts 1–6 are done. Prompt 4's execution path is built but **shelved** — IXS: "we don't have a vault accessible on testnet"; the product surface is decide + prove. D6 platform provisioning awaits the account decision (RECON §6.11). Prompts 7–8 (the console back end and the Next.js console) were executed 21 Sep against the user's Claude Design base; see RECON §6.14.
+**Status (23 Sep):** **D1–D10 are done and deployed.** Prompt 4's execution path is built but **shelved** — IXS: "we don't have a vault accessible on testnet"; the product surface is decide + prove. Prompts 7–8 (the console back end and the Next.js console) were executed 21 Sep against the user's Claude Design base (RECON §6.14). D9 added the x402 paywall, the sales ledger and the ERC-8004 identity (§6.15, §6.17); D10 the phone-width fold, the decision-history chart, the proven OpenServ rail and the failure drills (§6.17). Remaining: **D11 freeze**, rehearsal, the recorded demo, and submission by 27 Sep.
 
 ---
 

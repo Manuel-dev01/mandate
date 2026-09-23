@@ -150,7 +150,11 @@ A plain-English investment mandate ("preserve capital; never exceed 40% in one v
 
 **D9 — Monetization.** `triggers.x402({ price: '0.50' })` on the audit-report export. `client.erc8004.registerOnChain()` (needs a few dollars of **Base mainnet** ETH for gas — fund the wallet ahead of time). Wrap in try/catch so a gas failure can't break startup.
 
+> **What actually shipped (22 Sep, RECON §6.15/§6.17):** both rails. The report is listed as a paid OpenServ x402 service *and* sold through our own x402 on **Base Sepolia**, which is the demo path — OpenServ's rail settles real USDC on Base mainnet and their trigger endpoints were slow. ERC-8004 went on **Base Sepolia** (free gas) after their IPFS presign returned 500; registered directly as `84532:9316`, with our own live agent card as the token URI. One real sale of 0.50 USDC is settled on-chain.
+
 **D10 — History + polish.** Goldsky subgraph for vault history charts. Error states, empty states, loading states. Mobile-check the console.
+
+> **What actually shipped (22–23 Sep, RECON §6.17):** the vault charts were **cut** — the subgraphs are live but the data is not (BSC silent for 61 days, Fuji's NAV history stops 22 days back), so a vault chart is a flat line ending weeks ago. Replaced with the **decision history**: allowed vs refused over time, and which rules have actually refused. Error/empty/loading states already shipped with D8. The mobile check found that tables hid their actual-vs-limit column behind a sideways swipe; they now fold, asserted by `scripts/overflow-check.mjs`. Three failure drills recorded.
 
 **D11 — 🔒 FEATURE FREEZE.** No new features after today, no exceptions. Harden, seed demo data, rehearse the demo path end-to-end until it runs cleanly three times consecutively.
 
