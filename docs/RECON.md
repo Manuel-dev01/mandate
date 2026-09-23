@@ -427,6 +427,12 @@ Also on this pass: `AGENTS.md` was a copy of `CLAUDE.md` last touched around D2,
 
 **Run 1 is a shakedown, not a clean run.** It found three real things (the sequencing trap, the uncompressed pay page, the phone check's false failure) and needed a code change mid-run. The three-consecutive-clean-runs count starts from zero after this.
 
+**Run 2 — clean, 1 of 3.** No intervention, no second tries. Exactly four receipts in the right order with `msg` on the second 50,000 only, so the sequencing rule holds: `c18464f67664` ALLOW 5,000 → `eef8ee996292` REFUSE → `6dcbe5193910` REFUSE (argued) → `0cdf8ae6e65d` REFUSE Robinhood. Chain 13 receipts, **0 breaks**. Beat 5 bought `6dcbe5193910` — the argued refusal beat 3b had just created, so the narrative connects — settling at 21:59:47 (tx `0xd4fc3abcacc63672…`), ledger **3 sold / 1.50 USDC**.
+
+Timings from the chain: 5,000 → 50,000 **23 s**, 50,000 → argued **28 s**, then **150 s** from the argued receipt to the settled sale, which covers beats 4 and 5 together against a 55 s budget. The pay-page load lives inside that 150 s; opening it in a background tab during beat 4 is what makes it fit.
+
+**The phone check was flaky and is now honest about it.** `/health` blips on a cold container; one failed fetch used to silently drop `/receipts` and `/export` while the summary still read "no horizontal overflow". It now retries `/health` three times, says loudly when it gives up and that the verdict covers four routes rather than six, retries each route once when CDP itself wedges (`Page.enable timed out` after a heavy page), and prints the route count in the summary. Green now reads `no horizontal overflow across 6 routes`.
+
 ---
 
 ## 7. Sources

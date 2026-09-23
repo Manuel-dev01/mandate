@@ -35,14 +35,24 @@ const API = (process.env.API ?? 'https://agent-production-d238.up.railway.app').
 async function resolveRoutes() {
   if (process.env.ROUTES) return process.env.ROUTES.split(',')
   const base = ['/', '/chain', '/mandate', '/vaults']
-  try {
-    const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(15_000) })
-    const head = (await res.json())?.head
-    return head ? [...base, `/receipts/${head}`, `/export/${head}`] : base
-  } catch {
-    console.log(`  (no head from ${API} — checking the four static routes only)`)
-    return base
+  // /health blips occasionally on a cold container. One failed fetch used to silently
+  // drop the two routes that matter most, while the summary still said every route
+  // fits — so retry before giving up, and be loud about it when we do.
+  let lastErr = null
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(15_000) })
+      const head = (await res.json())?.head
+      if (head) return [...base, `/receipts/${head}`, `/export/${head}`]
+      lastErr = new Error('no head in /health')
+    } catch (err) {
+      lastErr = err
+    }
+    if (attempt < 3) await sleep(2000)
   }
+  console.log(`  !! no head from ${API} after 3 tries (${lastErr?.message}) — the receipt and export`)
+  console.log(`     pages are NOT covered by this run; "no horizontal overflow" below means 4 routes, not 6.`)
+  return base
 }
 
 // ----------------------------------------------------------- tiny WS client
@@ -230,7 +240,26 @@ const main = async () => {
   console.log(`\n${WEB} at ${WIDTH}px\n`)
 
   for (const route of routes) {
-    const page = targets.find((t) => t.type === 'page')
+    // Each route gets its own socket, and Chrome is sometimes still busy from the
+    // previous heavy page when we reconnect — so a wedged CDP call gets one retry
+    // before we call the route unmeasurable.
+    let lastErr = null
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      // measure() returns null when it got a reading, or the error message when it did not.
+      const err = await measure(route, attempt)
+      if (!err) { lastErr = null; break }
+      lastErr = err
+      if (attempt < 2) await sleep(3000)
+    }
+    if (lastErr) {
+      errored++
+      console.log(`  ?  ${route.padEnd(28)} could not measure — ${lastErr}`)
+    }
+  }
+
+  async function measure(route, attempt) {
+    const targetsNow = (await cdpTargets().catch(() => null)) ?? targets
+    const page = targetsNow.find((t) => t.type === 'page') ?? targets.find((t) => t.type === 'page')
     const ws = new Ws(page.webSocketDebuggerUrl)
     await ws.connect()
     try {
@@ -264,14 +293,14 @@ const main = async () => {
         console.log(`  ✗ ${route.padEnd(28)} scrollWidth ${sw} > viewport ${vw}  (+${sw - vw}px)`)
         for (const o of offenders) console.log(`      ${String(o.right).padStart(5)}px  ${o.tag.slice(0, 64)}${o.overflow !== 'visible' ? ` [overflow-x:${o.overflow}]` : ''}  "${o.text}"`)
       } else {
-        console.log(`  ✓ ${route.padEnd(28)} ${sw}px, fits`)
+        console.log(`  ✓ ${route.padEnd(28)} ${sw}px, fits${attempt > 1 ? ' (on retry)' : ''}`)
       }
+      return null
     } catch (err) {
       // Could not measure is NOT the same as overflows. Saying "overflow" about a page
       // we never managed to read would be exactly the kind of unbacked claim this
-      // script exists to catch.
-      errored++
-      console.log(`  ?  ${route.padEnd(28)} could not measure — ${err.message}`)
+      // script exists to catch. The caller retries once, then records it as unmeasured.
+      return err.message
     } finally {
       ws.close()
     }
@@ -281,7 +310,9 @@ const main = async () => {
   const parts = []
   if (failed) parts.push(`${failed} route(s) overflow`)
   if (errored) parts.push(`${errored} route(s) could not be measured`)
-  console.log(`\n${parts.length ? parts.join(', ') : 'no horizontal overflow'}\n`)
+  // Say how many routes that verdict covers, so a green line can never imply more
+  // was checked than actually was.
+  console.log(`\n${parts.length ? parts.join(', ') : `no horizontal overflow across ${routes.length} routes`}\n`)
   process.exit(failed || errored ? 1 : 0)
 }
 
