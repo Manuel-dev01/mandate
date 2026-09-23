@@ -160,11 +160,13 @@ A plain-English investment mandate ("preserve capital; never exceed 40% in one v
 
 **D12 — Narrative assets.** Record the 3-minute demo video. README with architecture diagram. One-page landing. Written revenue model with real numbers (TAM, fee structure, unit economics).
 
+> **Done early (23 Sep):** the architecture diagram and the one-page landing already shipped with the README and the console. The written revenue model is [`docs/REVENUE.md`](REVENUE.md), built on **measured** unit economics — 12 live decisions, 886–1,014 tokens each, marginal cost under $0.006 against a $0.50 price — with every assumed figure labelled as assumed and the sizing shown as arithmetic rather than asserted. Remaining for D12: **record the video**.
+
 **D13 — Submission package** + buffer for the inevitable.
 
 **D14 (27 Sep) — submit early in the day.** Never rely on the extra day the FAQ hints at.
 
-### Roadmap status — 16 Sep 2026
+### Roadmap status — 23 Sep 2026
 
 The roadmap above is the plan of record; this is what actually happened against it. Evidence in `docs/RECON.md` §6.
 
@@ -176,6 +178,12 @@ The roadmap above is the plan of record; this is what actually happened against 
 | D3 | ✅ | **Not built on Multipath** — it is not one of the three verified SERV Tools and nothing needed it; contradictions are handled deterministically (`stricter()`, `unmappable`). Rule 1 refuses on share of portfolio; vault-TVL share (the 88.80%) is context. `serv_prompt_guard` redacts system-prompt content echoed in replies and short-circuits clean requests ~1 in 3 — it is attached only when a user message exists, and the deterministic template is the answer of record. |
 | D4 | ✅ then shelved | Built and tested (signer with guardrails, `planAction` gated on an ALLOW with a verifying hash, three settlement kinds — BSC redeems `queued`). Then IXS replied: *"we don't have a vault accessible on testnet"*, and mainnet is capped at 0 too. **Decision: build only on what IXS gives access to.** No fork or sign-and-hold in the demo; the code stays dormant. |
 | D5 | ✅ | The receipt: whole rule set + whole decision with inputs + honesty labels, hash-linked in an append-only file store. `replay` re-runs the pure evaluator on the stored inputs → identical hash (beat 4). `renderReport` is the byte-stable audit report (beat 5). Beat 2 is now the ALLOW case with its receipt. |
+| D6 | ✅ | **Not the platform's Telegram trigger** — their integration form was failing on 21 Sep (RECON §6.12), so the demo surface is a **direct Bot API long-poll with a deterministic intent parser**: no LLM sits between the treasurer and the verdict. The same five handlers are also registered as OpenServ agent 4509, kept as the optional route. Disk snapshots added so a cold start degrades with a STALE badge, and `fetchUniverse` fails loudly rather than let a REST wobble shrink the universe to MCP's 1-of-5 (§6.13). |
+| D7 | ✅ | Console back end as a **read-only GET-only API inside the bot's process** (`console/api.ts`, `bin/serve.ts`), so one Railway service with one volume is the whole back end. View models reuse the bot's own wording (`telegram/present.ts`) so the console and the chat can never disagree. No "position/NAV panel" — IXS holds no position for us, and inventing one would have been fiction (§6.14). |
+| D8 | ✅ | **No reasoning-graph visualiser** — there is no graph; the evaluator is seven predicates, and drawing one would misrepresent the architecture. The hero is the artifact instead: a paper receipt that prints the newest refusal row by row and a barcode derived from each receipt hash. Built on the user's Claude Design base, with one motion vocabulary and `prefers-reduced-motion` honoured (§6.14). |
+| D9 | ✅ | **Both rails, and ERC-8004 on the wrong chain on purpose.** Listed as a paid OpenServ x402 service *and* sold through our own x402 on Base Sepolia, which is the demo path — theirs settles real mainnet USDC. Identity went to **Base Sepolia** (`84532:9316`) after their IPFS presign 500'd, registered directly with our own live agent card as the token URI (§6.15). |
+| D10 | ✅ | **Vault charts cut** — the subgraphs are live but the data is not (BSC silent 61 days, Fuji's NAV stops 22 days back), so the chart would be a flat line ending weeks ago. Replaced with the decision history from our own chain. Phone fold (the actual-vs-limit column was hidden behind a sideways swipe). OpenServ rail proven to return the byte-identical document. Three failure drills (§6.17). |
+| D11 | 🔄 | Freeze declared in `CLAUDE.md`; `scripts/preflight.mjs` gates every run. **"Seed demo data" was refused** — the console states on screen that nothing is seeded, so the rehearsal generates real decisions instead. Rehearsal found and fixed: a pay page that was unusable uncompressed (86 s → 28 s), a phone check claiming overflows it never measured, and a sequencing trap that turns the override line into an ALLOW if sent at the wrong moment (§6.18, §6.19). **Clean runs: 1 of 3.** |
 
 ---
 

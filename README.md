@@ -93,6 +93,8 @@ Execution (signer, plan → run) exists as dormant code: IXS vaults are not open
 
 The buyers are the ones IXS already sells to — broker-dealers, RIAs, fintechs and neobanks holding idle stablecoin balances, all of whom need the audit trail before they can touch onchain yield at all.
 
+The worked model — measured unit economics (**marginal cost under $0.006 per decision against a $0.50 report**), per-customer ACV, sizing arithmetic and what is still unproven — is in [`docs/REVENUE.md`](docs/REVENUE.md).
+
 ## Build status
 
 | Day | Delivered | Proof |
@@ -157,3 +159,4 @@ Nothing is signed or broadcast on the product surface. Robinhood Chain mainnet i
 | [`docs/RECEIPT.md`](./docs/RECEIPT.md) | The receipt: shape, what each hash commits to, how to verify one |
 | [`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) | The six-beat demo — the build's real spec |
 | [`docs/STRATEGY.md`](./docs/STRATEGY.md) | Track selection and competitive reasoning |
+| [`docs/REVENUE.md`](./docs/REVENUE.md) | Unit economics, pricing, sizing — and what is not yet proven |
