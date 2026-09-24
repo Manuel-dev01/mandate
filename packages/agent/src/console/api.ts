@@ -30,6 +30,8 @@ export interface ConsoleDeps {
   /** The business facts. Injectable so unit tests never read ambient env or hit the platform. */
   service?: (() => Promise<import('../monetize/service.js').ServiceFacts>) | undefined
   identity?: (() => import('../monetize/service.js').IdentityFacts) | undefined
+  /** Hash + rule count of each mandate the bot would actually decide on. */
+  mandates?: (() => Array<{ hash: string; rules: number }>) | undefined
   /** Whether the OpenServ agent (which serves the paid workflow) is connected. */
   openserv?: (() => { state: string; note: string | null }) | undefined
   /** Sales, written only after a settlement the facilitator confirmed. */
@@ -131,6 +133,7 @@ export function createConsoleHandler(deps: ConsoleDeps): ConsoleHandler {
         head,
         receipts: deps.store.list({ limit: MAX_LIST }).length,
         telegram: deps.telegram(),
+        mandates: deps.mandates?.() ?? [],
         openserv: deps.openserv?.() ?? { state: 'disabled', note: null },
       })
     }

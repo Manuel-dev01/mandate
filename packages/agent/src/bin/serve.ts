@@ -13,6 +13,7 @@ import { createConsoleServer, defaultConsoleDeps } from '../console/api.js'
 import { env } from '../env.js'
 import { createMandateAgent } from '../telegram/agent.js'
 import { TelegramBot } from '../telegram/bot.js'
+import { FileMandateStore } from '../telegram/mandates.js'
 
 const log = (line: string) => console.log(`${new Date().toISOString()} ${line}`)
 
@@ -24,9 +25,13 @@ if (!bot) log('TELEGRAM_BOT_TOKEN not set — serving the console API only')
 const openserv: { state: 'disabled' | 'connecting' | 'connected' | 'failed'; note: string | null } = { state: 'disabled', note: null }
 let stopOpenserv: (() => Promise<void> | void) | null = null
 
+/** Read fresh each call: the bot writes these, this only reports them. */
+const mandateStore = new FileMandateStore()
+
 const deps = {
   ...defaultConsoleDeps(),
   telegram: () => (bot ? bot.status : null),
+  mandates: () => mandateStore.summaries(),
   openserv: () => ({ ...openserv }),
 }
 // One replica runs the bot AND the API. Anything that escapes to the top level takes

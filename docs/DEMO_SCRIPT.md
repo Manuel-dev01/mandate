@@ -113,6 +113,7 @@ Close on the agent's **ERC-8004 identity** on 8004scan.io.
 
 ## Rehearsal standard (D11–D13)
 
+- **Re-paste the mandate before every run.** The bot decides on the **last** policy sent to that chat, and poking it with a test policy silently replaces the demo one — the console keeps showing the mandate of the newest *receipt*, so nothing on screen reveals it. A short policy compiles to fewer rules, and a mandate with no `allowed_networks` means **beat 6 ALLOWS a mainnet deposit** and writes that into the chain permanently. Beat 1 compiling to **7 rules · `c47687dbc30b`** is the confirmation. `preflight.mjs` now fails if no 7-rule mandate is live (RECON §6.23).
 - **`node scripts/preflight.mjs` must say READY before every run and every take.** It is the gate, and it covers the phone-width check below. The one that most often ruins a take is `facts are live`: if IXS is stale, `whitelist_required` fails closed and **beat 2's ALLOW becomes a REFUSE**.
 - **Never push to `master` during a run or a recording** — it redeploys the agent, and the bot goes unanswerable across the container swap a couple of minutes later.
 - Three consecutive clean runs, cold start, fresh browser profile. Anything needing a second try resets the count.

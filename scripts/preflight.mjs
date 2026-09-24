@@ -79,6 +79,16 @@ try {
     if (os.state === 'connected') ok('openserv rail', 'connected')
     else warn('openserv rail', `state ${os.state}${os.note ? ` (${os.note})` : ''} — the "also listed" line is unbacked`)
 
+    // The bot decides on the LAST policy pasted into the chat. A stray test policy
+    // silently replaces the demo one, and the console shows the mandate of the newest
+    // RECEIPT — so nothing on screen reveals it until a verdict comes out wrong. A
+    // 2-rule mandate has no allowed_networks, which means beat 6 ALLOWS mainnet.
+    const mandates = Array.isArray(health.mandates) ? health.mandates : []
+    if (mandates.length === 0) warn('active mandate', 'none set — beat 1 must run before any proposal')
+    else if (!mandates.some((m) => m.rules === 7)) {
+      bad('active mandate', `live mandates have ${mandates.map((m) => m.rules).join(', ')} rules — the demo policy is 7. Re-paste it, or beat 6 will ALLOW mainnet`)
+    } else ok('active mandate', `${mandates.length} chat(s) · ${mandates.map((m) => `${m.rules} rules ${m.hash.slice(0, 12)}`).join(' · ')}`)
+
     if (!head) bad('receipt chain', 'empty — beats 3 and 4 have nothing to open')
   }
 } catch (err) {

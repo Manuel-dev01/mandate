@@ -506,6 +506,16 @@ The first three audit agents died on a rate limit having produced nothing; re-ru
 
 **Known and accepted, not fixed:** the declared portfolio's asset symbol is never reconciled with the target vault's, so a Robinhood receipt reads "1,000 USDC" although that vault holds USDG. The amount and every percentage are correct; only the symbol names the book's accounting unit rather than the vault's. Changing it alters `numbers.action`, which is inside the decision hash, so it is a semantic change to the evaluator three days from submission. Recorded rather than risked.
 
+### 6.23 The parser fixes verified live, and the trap that verifying them set (24 Sep 2026)
+
+All three fixes confirmed against the deployed bot: `vault status arc` returns the Arc vault (chain 5042002, TVL 19.2 USDC); `hey what can you do` returns help; and `"Vaults must be whitelisted. Keep 20% liquid."` **compiles a mandate** instead of being swallowed as a vault lookup — the failure that would have lost a judge's policy with no error at all.
+
+**Verifying the third one armed a live hazard.** That test policy became the chat's active mandate: **2 rules** (`eb6c22d87be8`), liquidity buffer and whitelist. The console still showed the 7-rule demo mandate, because `/mandate` derives from the newest *receipt* and no decision had been made since — so **nothing on any screen revealed it**. The next proposal would have been judged on 2 rules: beat 3 would cite one rule instead of four, and beat 6 — with no `allowed_networks` rule, the wallet cleared and liquidity fine — would have **ALLOWED a real mainnet deposit** and chained that receipt permanently. Not a bug: the agent correctly enforced the policy it was actually given. Exactly why it is dangerous.
+
+Deliberately **not** reproduced — confirming it would have created that very receipt. Re-pasting the demo policy returned **7 rules · `c47687dbc30b`**, the same hash for the third independent time, which is the determinism claim again.
+
+**Closed properly rather than by memory:** `FileMandateStore.summaries()` reports hash + rule count per scope (never the chat id, never the policy text), `/health` carries it, and `preflight.mjs` now **fails** when no 7-rule mandate is live, naming the rule counts it did find. The rehearsal standard gained re-pasting the mandate as a step.
+
 ---
 
 ## 7. Sources
