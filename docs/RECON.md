@@ -461,6 +461,24 @@ Timings from the chain: 5,000 → 50,000 **23 s**, 50,000 → argued **28 s**, t
 
 **Sweep result after the fixes: clean.** Six routes x two viewports, no console errors, no failed requests, no overflow, no stuck loading, no junk text, and every control verified (filters `REFUSED -> 10`, `ALLOWED -> 6`; VERIFY and REPLAY render results at both widths).
 
+### 6.21 The audit that found the real bug, and the one my own fix caused (24 Sep 2026)
+
+Two adversarial passes over the whole agent, each verified by executing the modules rather than reading them.
+
+**The worst bug in the build, and it was never on the demo path.** `RuleSetSchema.rules` had `.max(7)` but **no `.min(1)`**, and `evaluate` derives the verdict from `citedRules.length === 0`. So a mandate that compiled to **zero rules ALLOWED everything** — reproduced: a 50,000 deposit to Robinhood **mainnet** returned `ALLOW` with *"All 0 applicable rules pass"*, and a receipt was chained. Reaching it needs only a policy whose clauses are all unmappable (*"Maximize yield and chase the best rate."*), which is exactly what a judge typing their own policy in beat 1 might produce. Now `.min(1)`, and `compile` refuses with the unmappable clauses named rather than returning something that permits everything.
+
+**A regression I introduced the day before.** Making `of`/`for` optional in `STATUS_RE` (§6.20 fix 1) turned `(.+?)` into "swallow the rest of the message". Any policy *beginning with the word* "Vault" became a status lookup — `"Vaults must be whitelisted. Keep 20% liquid."` resolved to `t_ix7540v1` via the whitelist name hint and **the mandate was silently never set**, with no error. Worse than the bug it fixed. The capture is now validated as name-shaped (`VAULT_NAME_RE`) and a sentence falls through to the policy test; trailing politeness ("show vaults **please**") lists every vault instead of hunting for one called "please". Six probes pinned in `parse.unit.test.ts`.
+
+**The tamper-evidence had a hole in the middle of it.** `verifyEntries` checked the link, file existence, `receipt.id` and `verifyReceipt` — but **never compared the index row to the receipt it points at**, and `list()` renders the index. Editing one line of `chain.jsonl` flipped a REFUSE to ALLOW while the page still printed **"0 breaks"**. The row is now re-derived with `entryOf` and compared field by field.
+
+**One torn line used to brick the whole store.** `readIndex` parsed every line bare, and `head`, `list`, `verifyChain` and `append` all route through it — so a container killed mid-`appendFileSync` (every push swaps the Railway container; `/data` survives) meant the bot could never write again and every console route 500'd. Unreadable lines are now dropped, counted and **reported** as a chain problem; same guard on receipt files and on the sales ledger, where the `safeParse` was guarded but the `JSON.parse` was not.
+
+**Smaller, all verified:** `historyView` picked its grain from the receipts' own span while bucketing to `now`, so a rehearsal inside one hour rendered **337 one-pixel bars** two weeks later — which is precisely when judges look. The paid report called a redeem a deposit and quoted a meaningless `0.00%` TVL share, contradicting the console for the same receipt. The free preview was **40 of 66 lines**, including every FAIL row with its actual-vs-limit. A settle we timed out on was resubmitted (40 s, and a duplicate against someone else's service); only `verify` retries now. A `CompileError` is authored for the user, so it is surfaced rather than swallowed by the generic handler text.
+
+**Rejected, deliberately: adding `createdAt` to the receipt hash.** It closes a real gap — `createdAt` is currently unverifiable from either side, and rewriting it skews the history chart — but every receipt already on the deployed chain hashed without it, so `verifyReceipt` would report breaks on live data and beat 4 would fail. The cure is worse than the disease four days out.
+
+**After the batch:** 119 tests pass, the browser sweep is clean at both widths, and the live chain still reads **14 receipts, 0 breaks** under the stricter check — so the new comparison does not false-positive on real data.
+
 ---
 
 ## 7. Sources
