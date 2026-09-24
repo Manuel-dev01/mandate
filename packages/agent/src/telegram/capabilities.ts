@@ -219,7 +219,8 @@ export function nudge(): string {
   return [
     "I didn't catch that.",
     '',
-    'Try a policy in plain English, or "Deposit 5,000 USDC into the BSC vault", or "vault status".',
+    'Set a policy — two clauses or more, like "Never put more than 40% in one vault. Keep 20% liquid."',
+    'Or propose something: "Deposit 5,000 USDC into the BSC vault". Or ask: "vault status".',
     'Say "help" for everything I can do.',
   ].join('\n')
 }

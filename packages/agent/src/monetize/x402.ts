@@ -108,24 +108,30 @@ export async function settlementOf(header: string, requirements: PaymentRequirem
     }
   }
 
-  const attempt = async <T>(run: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; transport: boolean; reason: string }> => {
+  /** Our own timeout, as opposed to the facilitator refusing the connection. */
+  const isOurTimeout = (err: unknown): boolean => messageOf(err).includes('facilitator timed out')
+
+  const attempt = async <T>(
+    run: () => Promise<T>,
+    mayRetry: (err: unknown) => boolean,
+  ): Promise<{ ok: true; value: T } | { ok: false; transport: boolean; reason: string }> => {
     for (let i = 0; i < 2; i++) {
       try {
         return { ok: true, value: await withTimeout(run) }
       } catch (err) {
-        if (!isTransport(err) || i === 1) return { ok: false, transport: isTransport(err), reason: messageOf(err) }
+        if (!isTransport(err) || !mayRetry(err) || i === 1) return { ok: false, transport: isTransport(err), reason: messageOf(err) }
       }
     }
     return { ok: false, transport: true, reason: 'unreachable' }
   }
 
-  const verified = await attempt(() => f.verify(payload, requirements))
+  const verified = await attempt(() => f.verify(payload, requirements), () => true)
   if (!verified.ok) {
     return verified.transport ? { kind: 'facilitator-down', reason: verified.reason, phase: 'verify' } : { kind: 'invalid', reason: verified.reason }
   }
   if (!verified.value.isValid) return { kind: 'invalid', reason: verified.value.invalidReason ?? 'the facilitator rejected the payment' }
 
-  const settled = await attempt(() => f.settle(payload, requirements))
+  const settled = await attempt(() => f.settle(payload, requirements), (err) => !isOurTimeout(err))
   if (!settled.ok) {
     return settled.transport ? { kind: 'facilitator-down', reason: settled.reason, phase: 'settle' } : { kind: 'invalid', reason: settled.reason }
   }

@@ -77,6 +77,26 @@ test('parseIntent: a vault name without "of"/"for" still reaches vault_status', 
   assert.deepEqual(parseIntent('status of the Avalanche vault', false), { kind: 'vault_status', vault: 'Avalanche' })
 })
 
+// Loosening STATUS_RE let `(.+?)` swallow whole sentences, so a policy that merely
+// STARTED with "Vault" became a status lookup and the mandate was silently never set.
+// A vault name is short and name-shaped; a sentence is a policy.
+test('parseIntent: a policy beginning with "Vault" is never swallowed as a status lookup', () => {
+  for (const policy of [
+    'Vaults must be whitelisted. Keep 20% liquid.',
+    'Vault deposits never exceed 25% of the treasury. Keep 20% liquid.',
+    'Vault exposure is capped at 30%.',
+    'Vaults on mainnet are off limits. Never exceed 40% in one vault.',
+    'status keep 20% liquid at all times',
+  ]) {
+    assert.equal(parseIntent(policy, false).kind, 'set_mandate', policy)
+  }
+})
+
+test('parseIntent: trailing politeness is not a vault name', () => {
+  assert.deepEqual(parseIntent('show vaults please', false), { kind: 'vault_status', vault: undefined })
+  assert.deepEqual(parseIntent('vault status now', false), { kind: 'vault_status', vault: undefined })
+})
+
 test('parseIntent: a greeting in front of the question still reaches help', () => {
   assert.equal(parseIntent('hey what can you do', false).kind, 'help')
   assert.equal(parseIntent('hi, what can you do?', false).kind, 'help')

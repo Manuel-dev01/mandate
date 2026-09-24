@@ -114,13 +114,32 @@ export class FileReceiptStore implements ReceiptStore {
     mkdirSync(dir, { recursive: true })
   }
 
+  /**
+   * One torn line must not brick the store. A container killed mid-append (every push
+   * to master swaps the Railway container, and /data survives it) can leave a partial
+   * final line; parsing it used to throw out of here, and head/list/verifyChain/append
+   * all route through this, so the bot could never write again and every console route
+   * 500'd. A line we cannot read is dropped and counted, never fatal.
+   */
   private readIndex(): ChainEntry[] {
     if (!existsSync(this.indexPath)) return []
-    return readFileSync(this.indexPath, 'utf8')
-      .split('\n')
-      .filter((l) => l.trim())
-      .map((l) => ChainEntrySchema.parse(JSON.parse(l)))
+    const out: ChainEntry[] = []
+    this.dropped = 0
+    for (const line of readFileSync(this.indexPath, 'utf8').split('\n')) {
+      if (!line.trim()) continue
+      try {
+        const parsed = ChainEntrySchema.safeParse(JSON.parse(line))
+        if (parsed.success) out.push(parsed.data)
+        else this.dropped++
+      } catch {
+        this.dropped++
+      }
+    }
+    return out
   }
+
+  /** Unreadable index lines seen on the last read, surfaced by verifyChain. */
+  private dropped = 0
 
   append(receipt: Receipt): void {
     const head = this.head()
@@ -135,7 +154,14 @@ export class FileReceiptStore implements ReceiptStore {
     if (!/^[0-9a-f]{64}$/.test(id)) return null
     const path = join(this.dir, `${id}.json`)
     if (!existsSync(path)) return null
-    return JSON.parse(readFileSync(path, 'utf8')) as Receipt
+    try {
+      return JSON.parse(readFileSync(path, 'utf8')) as Receipt
+    } catch {
+      // A truncated receipt file is a problem to report, not an exception to throw:
+      // verifyChain exists to describe exactly this, and every console route loads
+      // receipts through here.
+      return null
+    }
   }
 
   /** Resolve an abbreviated id (any unique prefix) to the full one. */
@@ -156,7 +182,12 @@ export class FileReceiptStore implements ReceiptStore {
   }
 
   verifyChain(): ChainVerification {
-    return verifyEntries(this.readIndex(), (id) => this.get(id))
+    const v = verifyEntries(this.readIndex(), (id) => this.get(id))
+    if (this.dropped === 0) return v
+    // Dropping a torn line keeps the store alive, but silently losing a link would be
+    // its own dishonesty — report it on the page whose job is chain integrity.
+    const problems = [...v.problems, { id: 'chain.jsonl', problem: `${this.dropped} unreadable index line(s) skipped` }]
+    return Object.freeze({ ok: false, count: v.count, problems: Object.freeze(problems) })
   }
 }
 
@@ -176,9 +207,18 @@ function verifyEntries(entries: readonly ChainEntry[], load: (id: string) => Rec
     if (entry.previousId !== previous) problems.push({ id: entry.id, problem: `links to ${entry.previousId ?? 'null'}, expected ${previous ?? 'null'}` })
     const receipt = load(entry.id)
     if (!receipt) {
-      problems.push({ id: entry.id, problem: 'file missing' })
+      problems.push({ id: entry.id, problem: 'file missing or unreadable' })
     } else {
       if (receipt.id !== entry.id) problems.push({ id: entry.id, problem: 'file id differs from index' })
+      // The index is what `list()` renders, and nothing used to check it against the
+      // receipt it claims to describe — so editing one line of chain.jsonl could flip a
+      // REFUSE to ALLOW while this still reported "0 breaks". The whole point of the
+      // page is tamper-evidence, so the row must be re-derived and compared.
+      // Field-by-field, not JSON.stringify: a schema parse normalises key order, so
+      // comparing serialised forms would flag honest rows.
+      const expected = entryOf(receipt)
+      const differing = (Object.keys(expected) as (keyof typeof expected)[]).filter((k) => String(expected[k]) !== String(entry[k]))
+      if (differing.length) problems.push({ id: entry.id, problem: `index row disagrees with the receipt on ${differing.join(', ')}` })
       const v = verifyReceipt(receipt)
       for (const c of v.checks) if (!c.ok) problems.push({ id: entry.id, problem: `${c.name}: ${c.detail}` })
     }

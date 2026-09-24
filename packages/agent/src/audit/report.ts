@@ -61,8 +61,14 @@ export function renderReport(r: Receipt): string {
     l(`  ${c.detail}`)
   }
   l()
-  l(`Context: this deposit would be ${d.numbers['vaultShareAfter'] ?? 'n/a'} of the vault's TVL.`)
-  l()
+  // Deposits only. This line used to print unconditionally, so a redeem's paid report
+  // called it a deposit and quoted a meaningless 0.00% (vaultShareNum is 0n for a
+  // redeem) — and contradicted the console, which guards the same line. A wrong
+  // sentence in the byte-stable artifact we sell as an auditor's record.
+  if (d.inputs.action.kind === 'deposit') {
+    l(`Context: this deposit would be ${d.numbers['vaultShareAfter'] ?? 'n/a'} of the vault's TVL.`)
+    l()
+  }
   l(`## Explanation [${d.rationaleSource}]`)
   l()
   l(d.rationale)

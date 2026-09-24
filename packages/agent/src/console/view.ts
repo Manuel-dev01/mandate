@@ -496,7 +496,11 @@ export function historyView(receipts: readonly Receipt[], now: Date = new Date()
   const times = receipts.map((r) => new Date(r.createdAt).getTime()).filter((t) => Number.isFinite(t))
   const firstMs = times.length ? Math.min(...times) : null
   const lastMs = times.length ? Math.max(...times) : null
-  const span = firstMs === null ? 0 : (lastMs as number) - firstMs
+  // The buckets run all the way to `now`, so the grain must be chosen over the same
+  // span. Taking it from lastMs - firstMs meant a rehearsal that happened inside one
+  // hour still rendered hourly days later: 8 receipts became 337 one-pixel bars two
+  // weeks on, which is exactly when judges look (RECON §6.21).
+  const span = firstMs === null ? 0 : Math.max(lastMs as number, now.getTime()) - firstMs
   const grain: 'hour' | 'day' = span < DAY ? 'hour' : 'day'
   const size = grain === 'hour' ? HOUR : DAY
 

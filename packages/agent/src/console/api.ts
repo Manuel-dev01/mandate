@@ -63,7 +63,8 @@ class HttpError extends Error {
   }
 }
 
-const MAX_LIST = 200
+// The counters on the landing page must not silently freeze once the chain passes this.
+const MAX_LIST = 5000
 const STARTED = Date.now()
 
 /** All receipts newest-first as full records. Hackathon scale: a few hundred files at most. */
@@ -104,7 +105,9 @@ export type ConsoleHandler = (req: {
 }) => Promise<{ status: number; body: unknown; contentType?: string; headers?: Record<string, string> }>
 
 /** Free, and labelled as free: enough of the report to judge it, never the whole file. */
-const PREVIEW_LINES = 40
+// 40 of a 66-line report was 61% of the product, including every FAIL row with its
+// actual-vs-limit. Stop before `## Inputs`: enough to judge the artifact, not the artifact.
+const PREVIEW_LINES = 16
 function previewOf(markdown: string, price: string): string {
   const lines = markdown.split('\n')
   const shown = lines.slice(0, PREVIEW_LINES).join('\n')

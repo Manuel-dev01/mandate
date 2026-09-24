@@ -23,6 +23,10 @@ const RECEIPT_RE = /^\s*\/?(?:receipt|verify|replay|show receipt)\s+([0-9a-f]{6,
 // "of"/"for" are optional: a judge types "vault status arc", not "status of the arc vault".
 const STATUS_RE = /^\s*\/?(?:vault\s*status|status|vaults?|show vaults?|list vaults?)(?:\s+(?:of\s+|for\s+)?(?:the\s+)?(.+?)(?:\s+vault)?)?\s*[.!?]*\s*$/i
 const STATUS_ALT_RE = /^\s*(?:how is|how's|what about)\s+(?:the\s+)?(.+?)(?:\s+vault)?\s*[.!?]*\s*$/i
+/** Vault names are short and name-shaped: "arc", "BSC", "Avalanche", "t_ix7540v1", "IXHYB - BSC". No sentence punctuation, no percentages. */
+const VAULT_NAME_RE = /^[\w][\w \-]{0,23}$/
+/** Politeness trailing a bare request — "show vaults please" means show them all, not a vault called "please". */
+const FILLER_RE = /^(?:please|now|thanks|thank you|pls|report|list|all|info|details?)$/i
 // A greeting may precede the question: "hey what can you do" must not fall through.
 const HELP_RE = /^\s*\/?(?:(?:hi|hey|hello|yo|gm)\b[,\s]*)?(?:start|help|what can you do|what can i do|what do you do|who are you|\?)\s*[.!?]*\s*$/i
 const GREETING_RE = /^\s*(?:hi|hey|hello|yo|gm)\s*[.!?]*\s*$/i
@@ -37,7 +41,15 @@ export function parseIntent(raw: string, hasLastAction: boolean): Intent {
   if (receipt) return { kind: 'get_receipt', id: receipt[1]! }
 
   const status = text.match(STATUS_RE)
-  if (status) return { kind: 'vault_status', vault: status[1]?.trim() }
+  if (status) {
+    const raw = status[1]?.trim()
+    // Making "of"/"for" optional let `(.+?)` swallow whole sentences, so a policy that
+    // merely STARTS with "Vault" became a status lookup and the mandate was silently
+    // never set — a worse failure than the one that change fixed. A vault name is short
+    // and name-shaped; anything sentence-like falls through to the policy test below.
+    if (!raw) return { kind: 'vault_status', vault: undefined }
+    if (VAULT_NAME_RE.test(raw)) return { kind: 'vault_status', vault: FILLER_RE.test(raw) ? undefined : raw }
+  }
 
   const action = text.match(ACTION_RE)
   if (action) {

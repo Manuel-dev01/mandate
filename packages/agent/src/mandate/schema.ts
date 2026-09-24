@@ -138,6 +138,10 @@ export const RuleSetSchema = z
     sourceText: z.string().min(1),
     rules: z
       .array(CompiledRuleSchema)
+      // A mandate with no rules would cite nothing and therefore ALLOW everything --
+      // the exact opposite of the product. An unenforceable policy is a compile
+      // failure, never an empty rule set.
+      .min(1)
       .max(RULE_TYPES.length)
       .refine((rules) => new Set(rules.map((r) => r.type)).size === rules.length, {
         message: 'one rule per type',

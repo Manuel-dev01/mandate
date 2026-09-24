@@ -166,9 +166,15 @@ export class TelegramBot {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
           this.log(`[${chatId}] handler error: ${msg}`)
-          // The detail goes to our logs, not to the chat: an internal message can carry a
-          // URL or a path, and the user can do nothing with it either way.
-          await this.send(chatId, 'Something failed on my side. Nothing was decided or recorded — please try that again.').catch(() => undefined)
+          // A CompileError is authored for the user and is the only signal that their
+          // policy maps to no rule — swallowing it means retrying the same text forever.
+          // Everything else stays generic: an internal message can carry a URL or a path
+          // and the user can do nothing with it.
+          const actionable = err instanceof Error && err.name === 'CompileError'
+          await this.send(
+            chatId,
+            actionable ? `I could not compile that policy: ${msg}` : 'Something failed on my side. Nothing was decided or recorded — please try that again.',
+          ).catch(() => undefined)
         }
       }
     }

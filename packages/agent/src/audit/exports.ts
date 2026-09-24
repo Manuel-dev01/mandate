@@ -67,8 +67,14 @@ export class FileExportLedger implements ExportLedger {
       .split('\n')
       .filter((l) => l.trim())
       .flatMap((l) => {
-        const parsed = SaleSchema.safeParse(JSON.parse(l))
-        return parsed.success ? [parsed.data] : []
+        // The safeParse was guarded but the JSON.parse was not, so one torn line took
+        // out /x402, the export page's price block and the sales counter in beat 5.
+        try {
+          const parsed = SaleSchema.safeParse(JSON.parse(l))
+          return parsed.success ? [parsed.data] : []
+        } catch {
+          return []
+        }
       })
   }
   record(sale: Omit<Sale, 'at' | 'currency'> & { at?: string }): Sale {

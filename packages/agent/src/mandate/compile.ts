@@ -76,7 +76,7 @@ const LLM_OUTPUT_JSON_SCHEMA = {
           absolute: { type: ['string', 'null'], description: 'Plain decimal asset amount, no symbol, or null.' },
           networks: { type: 'array', items: { type: 'string', enum: [...NETWORK_TOKENS] }, description: 'Chains the user ALLOWS. Empty unless the clause names permitted chains.' },
           deniedNetworks: { type: 'array', items: { type: 'string', enum: [...NETWORK_TOKENS] }, description: 'Chains the user EXCLUDES ("stay off", "no", "never on"). Empty unless the clause excludes chains.' },
-          sourcePhrase: { type: 'string', description: 'Exact copy of the clause from the user text.' },
+          sourcePhrase: { type: 'string', minLength: 1, description: 'Exact copy of the clause from the user text.' },
           inferred: { type: 'boolean' },
         },
       },
@@ -91,7 +91,9 @@ const LlmRuleSchema = z.object({
   absolute: z.string().nullable(),
   networks: z.array(z.enum(NETWORK_TOKENS)),
   deniedNetworks: z.array(z.enum(NETWORK_TOKENS)),
-  sourcePhrase: z.string(),
+  // Empty escaped postprocess and then threw a raw ZodError out of buildRuleSet,
+  // outside the retry loop — so the paid call was wasted with no retry and no feedback.
+  sourcePhrase: z.string().min(1),
   inferred: z.boolean(),
 })
 
@@ -202,6 +204,15 @@ export async function compileWithTrace(
     }
 
     const { rules, unmappable } = postprocess(text, parsed.value)
+    // Zero rules is not an empty mandate, it is no mandate: every proposal would be
+    // allowed because nothing could cite it. Refuse the compile and say which clauses
+    // could not be expressed, rather than hand back something that permits everything.
+    if (rules.length === 0) {
+      throw new CompileError('no clause of this policy maps to a rule, so nothing could be enforced', {
+        attempts: attempt,
+        detail: unmappable.length ? `unmappable: ${unmappable.join(' | ')}` : 'the model returned no rules',
+      })
+    }
     const ruleSet = buildRuleSet({
       version: opts.version ?? 1,
       sourceText: text,

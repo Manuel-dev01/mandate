@@ -217,7 +217,67 @@ test('file store: round-trips through disk and verifyChain detects a tampered or
     assert.ok(v.problems.every((p) => p.id === r1.id), JSON.stringify(v.problems))
 
     rmSync(path)
-    assert.ok(reopened.verifyChain().problems.some((p) => p.id === r1.id && p.problem === 'file missing'))
+    assert.ok(reopened.verifyChain().problems.some((p) => p.id === r1.id && p.problem === 'file missing or unreadable'))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('a corrupt receipt file is reported, not thrown', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mandate-corrupt-'))
+  try {
+    const store = new FileReceiptStore(dir)
+    const r1 = record({ ruleSet: RULE_SET, decision: allow() }, store)
+    // Half a file is what a container killed mid-write leaves behind.
+    const path = join(dir, `${r1.id}.json`)
+    const half = readFileSync(path, 'utf8').slice(0, 200)
+    writeFileSync(path, half)
+
+    const reopened = new FileReceiptStore(dir)
+    assert.equal(reopened.get(r1.id), null, 'an unreadable receipt reads as absent, it does not throw')
+    const v = reopened.verifyChain()
+    assert.equal(v.ok, false)
+    assert.ok(v.problems.some((p) => p.problem === 'file missing or unreadable'), JSON.stringify(v.problems))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('a torn index line does not brick the store, and is reported', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mandate-torn-'))
+  try {
+    const store = new FileReceiptStore(dir)
+    record({ ruleSet: RULE_SET, decision: allow() }, store)
+    const indexPath = join(dir, 'chain.jsonl')
+    // A kill mid-appendFileSync leaves a partial final line.
+    writeFileSync(indexPath, `${readFileSync(indexPath, 'utf8').trimEnd()}\n{"id":"deadbeef","previou`)
+
+    const reopened = new FileReceiptStore(dir)
+    assert.doesNotThrow(() => reopened.head(), 'head must survive a torn line')
+    assert.doesNotThrow(() => reopened.list(), 'list must survive a torn line')
+    assert.equal(reopened.list().length, 1, 'the good line still reads')
+    const v = reopened.verifyChain()
+    assert.equal(v.ok, false, 'silently losing a link would be its own dishonesty')
+    assert.ok(v.problems.some((p) => /unreadable index line/.test(p.problem)), JSON.stringify(v.problems))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('editing the index alone is caught: the row must match the receipt', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mandate-index-'))
+  try {
+    const store = new FileReceiptStore(dir)
+    const r1 = record({ ruleSet: RULE_SET, decision: allow() }, store)
+    const indexPath = join(dir, 'chain.jsonl')
+    const line = JSON.parse(readFileSync(indexPath, 'utf8').trim()) as Record<string, unknown>
+    const flipped = line['verdict'] === 'REFUSE' ? 'ALLOW' : 'REFUSE'
+    writeFileSync(indexPath, `${JSON.stringify({ ...line, verdict: flipped })}\n`)
+
+    // The index is what the console renders, so a one-sided edit used to pass as clean.
+    const v = new FileReceiptStore(dir).verifyChain()
+    assert.equal(v.ok, false, 'a tampered index row must not verify')
+    assert.ok(v.problems.some((p) => p.id === r1.id && /index row disagrees/.test(p.problem)), JSON.stringify(v.problems))
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
