@@ -145,7 +145,7 @@ Marginal cost per decision is **under $0.006**, measured across 12 live receipts
 ```bash
 cp .env.example .env        # add SERV_API_KEY, then a burner key for testnet writes
 node scripts/smoke.mjs      # verifies every live integration — zero dependencies, no install
-npm install
+npm ci                      # lockfile-exact; `npm install` also works
 npm run typecheck
 npm test --workspace=agent                   # unit tests — never bills SERV
 ```

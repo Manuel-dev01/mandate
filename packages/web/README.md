@@ -14,4 +14,4 @@ node scripts/web-smoke.mjs                # from the repo root: every route answ
 Routes: `/` (the newest refusal resolving row by row) · `/chain` · `/receipts/[id]` (verify + replay) · `/mandate` · `/vaults` · `/export/[id]`.
 Every page has an empty state (no receipts → open Telegram), a loading state, and an unreachable state (the agent is down → say so, never an error screen). Tables fold into two columns under 720px instead of scrolling sideways — `node scripts/overflow-check.mjs` (from the repo root) asserts no route scrolls sideways at 390px.
 
-Deployed on Vercel from GitHub `master`, **root directory `packages/web`**, with `MANDATE_API_URL` (and `MANDATE_API_KEY` when the agent sets `CONSOLE_API_KEY`). The design tokens live in `app/globals.css`; the base design is `Mandate.dc.html` at the repo root.
+Deployed on Vercel from GitHub `master`, **root directory `packages/web`**, with `MANDATE_API_URL` (and `MANDATE_API_KEY` when the agent sets `CONSOLE_API_KEY`). The design tokens live in `app/globals.css`; the base design it was built from is `docs/internal/design-base.dc.html`.
