@@ -158,5 +158,6 @@ Nothing is signed or broadcast on the product surface. Robinhood Chain mainnet i
 | [`docs/MANDATE_DSL.md`](./docs/MANDATE_DSL.md) | The seven rule types |
 | [`docs/RECEIPT.md`](./docs/RECEIPT.md) | The receipt: shape, what each hash commits to, how to verify one |
 | [`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) | The six-beat demo — the build's real spec |
+| [`docs/DEMO_RUNBOOK.md`](./docs/DEMO_RUNBOOK.md) | The checklist and the shot-by-shot voiceover for recording it |
 | [`docs/STRATEGY.md`](./docs/STRATEGY.md) | Track selection and competitive reasoning |
 | [`docs/REVENUE.md`](./docs/REVENUE.md) | Unit economics, pricing, sizing — and what is not yet proven |
