@@ -84,13 +84,17 @@ export default async function VaultsPage() {
         {mainnet.length ? (
           <div>
             <div className="label" style={{ marginBottom: 16 }}>
-              Mainnet, {v.mainnetRefusals > 0 ? 'always refused' : 'read-only'}
+              Mainnet, {v.mainnetProposals > 0 && v.mainnetRefusals === v.mainnetProposals ? 'refused every time' : 'read-only'}
             </div>
             <p className="prose muted">
-              {mainnet.map((x) => x.name).join(', ')} holds real {mainnet.map((x) => x.asset).join('/')} on Robinhood Chain. The agent reads it live;
-              {v.mainnetRefusals > 0
-                ? ` every proposal into it so far — ${v.mainnetRefusals} — was refused under "Testnet only".`
-                : ' a testnet-only mandate refuses every proposal into it.'}
+              {mainnet.map((x) => x.name).join(', ')} holds real {mainnet.map((x) => x.asset).join('/')} on {mainnet.map((x) => x.network).join(', ')}. The agent reads it live;
+              {/* Only claim what the chain proves: how many went in, how many were refused,
+                  and how many of those actually cited the network rule. */}
+              {v.mainnetProposals === 0
+                ? ' a testnet-only mandate refuses every proposal into it.'
+                : v.mainnetRefusals === v.mainnetProposals
+                  ? ` all ${v.mainnetProposals} proposal${v.mainnetProposals === 1 ? '' : 's'} into it so far ${v.mainnetProposals === 1 ? 'was' : 'were'} refused${v.mainnetNetworkRefusals === v.mainnetProposals ? ' under "Testnet only"' : ''}.`
+                  : ` ${v.mainnetRefusals} of ${v.mainnetProposals} proposals into it were refused${v.mainnetNetworkRefusals > 0 ? `, ${v.mainnetNetworkRefusals} under "Testnet only"` : ''}.`}
             </p>
           </div>
         ) : null}

@@ -29,7 +29,16 @@ const deps = {
   telegram: () => (bot ? bot.status : null),
   openserv: () => ({ ...openserv }),
 }
+// One replica runs the bot AND the API. Anything that escapes to the top level takes
+// both down mid-demo, so log it and keep serving rather than let Node exit.
+process.on('unhandledRejection', (err) => log(`unhandledRejection: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`))
+process.on('uncaughtException', (err) => log(`uncaughtException: ${err.stack ?? err.message}`))
+
 const server = createConsoleServer(deps, log)
+
+// Without this an EADDRINUSE emits 'error' with no listener, which is an uncaught
+// exception — the console API failing to bind would also kill the Telegram bot.
+server.on('error', (err) => log(`console api server error: ${err instanceof Error ? err.message : String(err)}`))
 
 server.listen(env.PORT, () => {
   log(`console api listening on :${env.PORT} · receipts ${env.RECEIPTS_DIR} · snapshots ${env.SNAPSHOT_DIR}${deps.apiKey ? ' · x-console-key required' : ''}`)
@@ -37,16 +46,17 @@ server.listen(env.PORT, () => {
 
 if (bot) {
   bot.start().catch((err) => {
-    // A bad token is fatal; everything transient is retried inside start().
-    log(`bot: ${err instanceof Error ? err.message : String(err)}`)
-    process.exit(1)
+    // A bad token used to exit the process, taking the console down with it — so a
+    // Telegram auth problem blacked out beats 4 and 5 too. The API is built to serve
+    // without a token; report the failure on /health and keep serving.
+    log(`bot failed to start: ${err instanceof Error ? err.message : String(err)} — the console API keeps serving`)
   })
 }
 
 if (env.OPENSERV_API_KEY) {
   openserv.state = 'connecting'
   process.env['OPENSERV_API_KEY'] = env.OPENSERV_API_KEY
-  void run(createMandateAgent())
+  void (async () => run(createMandateAgent()))()
     .then(({ stop }) => {
       stopOpenserv = stop
       openserv.state = 'connected'

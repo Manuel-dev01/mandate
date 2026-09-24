@@ -29,6 +29,10 @@ export default async function ExportPage({ params }: { params: Promise<{ id: str
   const identity = x402.ok ? x402.data.identity : null
   const sales = x402.ok ? x402.data.sales : null
   const lines = preview.ok ? preview.data.split('\n') : []
+  // The preview footer carries the real total ("Preview: 16 of 66 lines"). The tile used
+  // to count the preview's own lines — footer included — and so printed "21+ lines"
+  // directly above a line saying 66.
+  const totalLines = preview.ok ? Number(/of (\d+) lines/.exec(preview.data)?.[1] ?? 0) || null : null
   const buyUrl = `${API_URL}/receipts/${r.id}/report`
 
   return (
@@ -52,14 +56,14 @@ export default async function ExportPage({ params }: { params: Promise<{ id: str
             <Tile label="Receipt" value={r.short} />
             <Tile label="Verdict" value={verdictWord(r.verdict)} tone={r.verdict === 'REFUSE' ? 'red' : 'green'} />
             <Tile label="Issued" value={utcDateTime(r.createdAt)} />
-            <Tile label="Report" value={preview.ok ? `${lines.length}+ lines · Markdown` : 'unavailable'} tone={preview.ok ? undefined : 'amber'} />
+            <Tile label="Report" value={preview.ok ? `${totalLines ?? `${lines.length}+`} lines · Markdown` : 'unavailable'} tone={preview.ok ? undefined : 'amber'} />
           </div>
 
           <div className="label" style={{ marginBottom: 16 }}>
             What the buyer receives
           </div>
           <p className="prose" style={{ marginBottom: 24 }}>
-            The full decision record as byte-stable Markdown: all seven rules with their actual value and limit, the clause of the policy that produced each one, the live vault facts it was decided on, the explanation and its trace, and the three hashes anyone can re-derive. Two buyers of the same receipt get identical files.
+            The full decision record as byte-stable Markdown: every rule with its actual value and limit, the clause of the policy that produced each one, the live vault facts it was decided on, the explanation and its trace, and the three hashes anyone can re-derive. Two buyers of the same receipt get identical files.
           </p>
 
           {preview.ok ? (

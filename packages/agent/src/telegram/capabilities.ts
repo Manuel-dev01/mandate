@@ -198,7 +198,10 @@ export async function vaultStatus(args: { vault?: string | undefined }, deps: Ca
     return [
       `${facts.name} — ${facts.network} (chain ${facts.chainId})${facts.stale ? ' (STALE snapshot)' : ''}`,
       `Settlement ${facts.settlement} · status ${facts.status ?? 'unknown'} · paused ${facts.paused === null ? 'unreadable' : facts.paused}`,
-      `TVL ${money(facts.totalAssets, facts.asset)} · whitelist ${facts.whitelistEnabled ? 'enforced' : 'not enforced'} · this wallet ${facts.whitelisted === null ? 'unverified' : facts.whitelisted ? 'cleared' : 'NOT cleared'}`,
+      // A failed whitelist check reads as null; collapsing that into "not enforced" is the
+      // reassuring answer and an unproven one — and it contradicted the list view above,
+      // which prints "whitelist required" for the same vault from the vault record.
+      `TVL ${money(facts.totalAssets, facts.asset)} · whitelist ${facts.whitelistEnabled === null ? `unverified (vault record says ${facts.requiresWhitelist ? 'required' : 'open'})` : facts.whitelistEnabled ? 'enforced' : 'not enforced'} · this wallet ${facts.whitelisted === null ? 'unverified' : facts.whitelisted ? 'cleared' : 'NOT cleared'}`,
       `Vault id ${facts.vaultId}`,
     ].join('\n')
   }

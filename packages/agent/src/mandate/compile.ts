@@ -24,6 +24,7 @@ import {
   buildRuleSet,
   stricter,
   RuleSetSchema,
+  verifyRuleSetHash,
   type CompiledRule,
   type KnownNetwork,
   type Rule,
@@ -505,13 +506,32 @@ export async function compileCached(sourceText: string, opts: CompileOptions & {
   const dir = opts.cacheDir ?? env.COMPILE_CACHE_DIR
   const file = join(dir, `ruleset-${createHash('sha256').update(sourceText.trim()).digest('hex').slice(0, 16)}.json`)
   if (existsSync(file)) {
-    const parsed = RuleSetSchema.safeParse(JSON.parse(readFileSync(file, 'utf8')))
-    if (parsed.success) return parsed.data
+    // The safeParse was guarded but the read and JSON.parse were not. A partial write
+    // (ENOSPC on /data) left a truncated file that threw here on every later paste of
+    // the same policy — and the volume outlives restarts, so beat 1 stayed broken
+    // forever. Also verify the hash: a cache entry whose content and hash disagree
+    // would decide a receipt that then fails verify on stage.
+    try {
+      const parsed = RuleSetSchema.safeParse(JSON.parse(readFileSync(file, 'utf8')))
+      if (parsed.success && verifyRuleSetHash(parsed.data)) return parsed.data
+    } catch {
+      // unreadable cache entry: fall through and recompile
+    }
+    try {
+      const { rmSync } = await import('node:fs')
+      rmSync(file, { force: true })
+    } catch {
+      // best effort
+    }
   }
   const ruleSet = await compile(sourceText, opts)
   try {
     mkdirSync(dir, { recursive: true })
-    writeFileSync(file, JSON.stringify(ruleSet, null, 2))
+    // Write then rename, so a partial write is never visible under the real name.
+    const { renameSync } = await import('node:fs')
+    const tmp = `${file}.tmp`
+    writeFileSync(tmp, JSON.stringify(ruleSet, null, 2))
+    renameSync(tmp, file)
   } catch {
     // a cache that fails to write costs one more SERV call next time, nothing else
   }

@@ -62,7 +62,9 @@ export class TelegramBot {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      ...(signal ? { signal } : {}),
+      // Only getUpdates passed a signal, so a hung sendMessage blocked the sequential
+      // poll loop and the bot looked dead in every chat for minutes, with no log.
+      signal: signal ?? AbortSignal.timeout(15_000),
     })
     const json = (await res.json()) as { ok: boolean; result?: unknown; description?: string }
     if (!json.ok) throw new Error(`telegram ${method}: ${json.description ?? res.status}`)
@@ -77,7 +79,14 @@ export class TelegramBot {
       } catch (err) {
         // Presentation must never lose a verdict: if Telegram rejects the markup, send the plain text.
         this.log(`html send failed (${err instanceof Error ? err.message : String(err)}) — sending plain`)
-        await this.call('sendMessage', { chat_id: chatId, text: chunk, disable_web_page_preview: true })
+        try {
+          await this.call('sendMessage', { chat_id: chatId, text: chunk, disable_web_page_preview: true })
+        } catch (err2) {
+          // Both attempts failed. Log it and keep going: one undeliverable chunk must not
+          // abort the rest of the reply, and must not reach the handler's "nothing was
+          // recorded" message when the receipt is already on the chain.
+          this.log(`plain send failed too (${err2 instanceof Error ? err2.message : String(err2)})`)
+        }
       }
     }
   }
@@ -173,7 +182,7 @@ export class TelegramBot {
           const actionable = err instanceof Error && err.name === 'CompileError'
           await this.send(
             chatId,
-            actionable ? `I could not compile that policy: ${msg}` : 'Something failed on my side. Nothing was decided or recorded — please try that again.',
+            actionable ? `I could not compile that policy: ${msg}` : 'Something failed on my side — please try that again. If a decision was already recorded, it is on the console chain.',
           ).catch(() => undefined)
         }
       }

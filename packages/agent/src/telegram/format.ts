@@ -66,17 +66,36 @@ export function toTelegramHtml(text: string): string {
     .join('\n')
 }
 
+/** Break one over-long line at the last space before the limit, or hard if there is none. */
+function hardSplit(line: string, max: number): string[] {
+  const out: string[] = []
+  let rest = line
+  while (rest.length > max) {
+    const cut = rest.lastIndexOf(' ', max)
+    const at = cut > max * 0.5 ? cut : max
+    out.push(rest.slice(0, at))
+    rest = rest.slice(at).trimStart()
+  }
+  if (rest) out.push(rest)
+  return out
+}
+
 /** Split on line boundaries so no message ever cuts through a tag or a hash. */
 export function chunkLines(text: string, max = 3500): string[] {
   const chunks: string[] = []
   let current = ''
   for (const line of text.split('\n')) {
-    const next = current ? `${current}\n${line}` : line
-    if (next.length > max && current) {
-      chunks.push(current)
-      current = line
-    } else {
-      current = next
+    // A single line longer than the limit used to be emitted whole, which Telegram
+    // rejects outright — an unpunctuated policy echoed back as one unmappable clause
+    // could do it. Hard-split before it ever reaches a chunk.
+    for (const piece of line.length > max ? hardSplit(line, max) : [line]) {
+      const next = current ? `${current}\n${piece}` : piece
+      if (next.length > max && current) {
+        chunks.push(current)
+        current = piece
+      } else {
+        current = next
+      }
     }
   }
   if (current || chunks.length === 0) chunks.push(current)

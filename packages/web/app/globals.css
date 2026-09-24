@@ -608,6 +608,14 @@ button {
     transform: none;
     max-width: 100%;
   }
+  /* The phrase column is the actual-vs-limit line — the thing the demo is about. On a
+     phone the ellipsis clipped it to "15.00% liquid · floor 20.0…", and an ellipsis is
+     not horizontal overflow, so overflow-check.mjs could never catch it. Let it wrap. */
+  .paper-row .phrase {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
 }
 
 /* ---------- motion system: enter, print, lift. One vocabulary for every page. */

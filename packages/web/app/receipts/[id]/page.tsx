@@ -82,7 +82,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
             </div>
           ) : (
             <p className="prose muted">
-              All {r.applicable} applicable rules passed against live vault data. The mandate's clauses are on the{' '}
+              All {r.applicable} applicable rules passed against {r.inputs.facts.stale ? 'the last good vault snapshot' : 'live vault data'}. The mandate's clauses are on the{' '}
               <Link href="/mandate" style={{ color: 'var(--ink)', borderBottom: '1px solid var(--line-4)' }}>
                 mandate page
               </Link>

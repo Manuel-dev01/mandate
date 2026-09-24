@@ -38,7 +38,7 @@ export default async function Landing() {
             The interesting output is what it <em>refused</em> to do.
           </h1>
           <p style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--ink-3)', margin: '0 0 40px', maxWidth: '44ch' }}>
-            An investment policy written in plain English, compiled into seven rules, checked against every move — and a receipt for every answer.
+            An investment policy written in plain English, compiled into typed rules, checked against every move — and a receipt for every answer.
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Link href={heroReceipt ? `/receipts/${heroReceipt.id}` : '/chain'} className="btn primary">
@@ -61,7 +61,6 @@ export default async function Landing() {
             <Stat label="Receipts" value={stats.data.receipts} />
             <Stat label="Refused" value={stats.data.refused} tone="red" />
             <Stat label="Reports sold" value={stats.data.sold ?? 0} />
-            <Stat label="Signed txns" value={stats.data.signedTxns} />
           </div>
           {stats.data.history && stats.data.history.total > 0 ? (
             <div style={{ marginTop: 40 }}>
@@ -83,7 +82,7 @@ export default async function Landing() {
             <div className="label" style={{ marginBottom: 16 }}>
               01 Compile
             </div>
-            <p className="prose">English in, seven rules out. Each rule keeps the clause that produced it.</p>
+            <p className="prose">English in, typed rules out — drawn from a fixed set of seven. Each rule keeps the clause that produced it.</p>
           </div>
           <div>
             <div className="label" style={{ marginBottom: 16 }}>

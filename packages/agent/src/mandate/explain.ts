@@ -118,7 +118,10 @@ export async function explain(decision: Decision, opts: ExplainOptions = {}): Pr
       explanation: trace({ model: result.model, tokens: result.usage.totalTokens }),
     })
   } catch (err) {
-    if (err instanceof ServError && (err.isAuthError || err.isCreditsError)) throw err
+    // This used to rethrow on auth/credits, which contradicted the module's own contract
+    // and killed beats 2 and 3 outright: the verdict was already computed deterministically
+    // before explain() ran, so losing the prose vendor must never lose the decision. The
+    // classifier is also text-based, so a 429 mentioning "quota" tripped it.
     return Object.freeze({
       ...decision,
       explanation: trace({ note: `SERV failed: ${err instanceof Error ? err.message : String(err)}; template rationale kept` }),

@@ -29,7 +29,7 @@ export function TelegramBlock({ receipts }: { receipts: number }) {
           Talk to the treasurer in Telegram. Read the proof here.
         </h2>
         <p className="prose" style={{ maxWidth: '48ch', marginBottom: 32 }}>
-          There is no form and no dashboard input. Every receipt on this console — all {receipts} so far — was a message to the bot, checked against the mandate with live vault data, and answered ALLOWED or REFUSED with the numbers.
+          There is no form and no dashboard input. Every receipt on this console{receipts > 0 ? ` — all ${receipts} so far —` : ''} was a message to the bot, checked against the mandate with live vault data (or the last good snapshot when IXS was unreachable — the receipt says which), and answered ALLOWED or REFUSED with the numbers.
         </p>
         <a href={TELEGRAM_URL} className="btn primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
           <TelegramIcon size={14} /> Open {TELEGRAM_HANDLE}

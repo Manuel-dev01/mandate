@@ -213,7 +213,9 @@ export interface VaultsView {
   source: 'live' | 'memory' | 'disk'
   chains: number
   vaults: VaultRowView[]
+  mainnetProposals: number
   mainnetRefusals: number
+  mainnetNetworkRefusals: number
   price: string
 }
 

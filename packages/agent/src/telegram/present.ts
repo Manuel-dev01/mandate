@@ -42,7 +42,9 @@ export function checkPhrase(c: RuleCheck, facts: Pick<VaultFacts, 'network' | 'c
     case 'max_single_action_size':
       return `${c.actual} of the book · limit ${c.limit}`
     case 'paused_vault_prohibition':
-      if (c.passed) return facts.paused === null ? `not paused (status ${facts.status ?? 'unknown'})` : 'not paused'
+      // When paused() was unreadable we may not say "not paused" — nothing on-chain was
+      // read. The rule still passes on the status fallback; the wording must say so.
+      if (c.passed) return facts.paused === null ? `paused() unreadable · status ${facts.status ?? 'unknown'}` : 'not paused'
       return facts.paused === true ? 'PAUSED on-chain' : `status ${facts.status ?? 'unknown'}`
     case 'allowed_networks':
       return `${facts.network} (${facts.chainId}) · ${c.passed ? 'allowed' : 'not allowed'}`

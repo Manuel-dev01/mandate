@@ -19,7 +19,7 @@ import type { RuleType } from '../mandate/schema.js'
 import { agentCard } from '../monetize/agent-card.js'
 import { identityFacts, paywallPage, serviceFacts } from '../monetize/service.js'
 import { paymentResponseHeader, reportRequirements, settlementOf, X402_VERSION, type Settlement } from '../monetize/x402.js'
-import { chainRowView, historyView, mandateView, receiptView, salesView, statsView, tallyFired, vaultsView, type ChainRowView } from './view.js'
+import { chainRowView, historyView, isMainnet, mandateView, receiptView, salesView, statsView, tallyFired, vaultsView, type ChainRowView } from './view.js'
 
 export interface ConsoleDeps {
   store: ReceiptStore & { resolve?: (prefix: string) => string | null }
@@ -221,8 +221,14 @@ export function createConsoleHandler(deps: ConsoleDeps): ConsoleHandler {
       })
       const view = vaultsView(universe, states)
       // Mainnet refusals, so the vaults page can say "always refused" with a real count.
-      const mainnetRefusals = loadAll(deps.store, { verdict: 'REFUSE' }).filter((r) => r.environment.chainId === 4663).length
-      return json({ ...view, mainnetRefusals, price: env.X402_PRICE_USDC })
+      // "Always refused under Testnet only" needs three numbers to be true, not one:
+      // how many proposals went to mainnet at all, how many were refused, and how many
+      // of those actually cited the network rule.
+      const mainnetAll = loadAll(deps.store).filter((r) => isMainnet(r.environment.chainId))
+      const mainnetProposals = mainnetAll.length
+      const mainnetRefusals = mainnetAll.filter((r) => r.decision.verdict === 'REFUSE').length
+      const mainnetNetworkRefusals = mainnetAll.filter((r) => r.decision.citedRules.some((c) => c.rule.type === 'allowed_networks')).length
+      return json({ ...view, mainnetProposals, mainnetRefusals, mainnetNetworkRefusals, price: env.X402_PRICE_USDC })
     }
 
     // The ERC-8004 token URI points here: the identity is checkable against a running agent.
@@ -243,7 +249,19 @@ export function createConsoleServer(deps: ConsoleDeps = defaultConsoleDeps(), lo
 
   return createServer(async (req: IncomingMessage, res: ServerResponse) => {
     const started = Date.now()
-    const url = new URL(req.url ?? '/', 'http://localhost')
+    // Node's HTTP parser accepts request targets that `new URL` rejects ("//%", "//[").
+    // This used to sit outside the try inside an async handler, so one such request from
+    // any passing scanner became an unhandled rejection and killed the process — which
+    // on Railway is the Telegram bot AND this API in one replica. Reproduced before fixing.
+    let url: URL
+    try {
+      url = new URL(req.url ?? '/', 'http://localhost')
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify({ error: 'malformed request target', status: 400 }))
+      log(`${req.method} <malformed> 400 ${Date.now() - started}ms`)
+      return
+    }
     const send = (status: number, body: string, contentType = 'application/json; charset=utf-8', extra: Record<string, string> = {}) => {
       const headers: Record<string, string> = {
         'Content-Type': contentType,
