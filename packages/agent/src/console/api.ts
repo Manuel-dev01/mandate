@@ -170,7 +170,15 @@ export function createConsoleHandler(deps: ConsoleDeps): ConsoleHandler {
         const settlement = deps.settle ? await deps.settle(payment, r.id, deps.origin) : await settlementOf(payment, requirements)
         if (settlement.kind === 'facilitator-down') {
           // Never hand over the file on a maybe, and never blame the buyer for our outage.
-          throw new HttpError(503, `could not reach the x402 facilitator to settle the payment (${settlement.reason}) — nothing was charged; please retry`)
+          // We may only say "nothing was charged" when the failure happened during verify;
+          // a settle we stopped waiting for may still have been broadcast, and claiming
+          // otherwise would be exactly the unbacked assertion this product exists to refuse.
+          throw new HttpError(
+            503,
+            settlement.phase === 'verify'
+              ? `could not reach the x402 facilitator to check the payment (${settlement.reason}) — nothing was charged; please retry`
+              : `the x402 facilitator did not confirm the settlement in time (${settlement.reason}) — the report was not released. Your payment may or may not have gone through: check the payer address on the block explorer before paying again`,
+          )
         }
         if (settlement.kind === 'invalid') {
           return { status: 402, body: { x402Version: X402_VERSION, accepts: [requirements], error: settlement.reason } }

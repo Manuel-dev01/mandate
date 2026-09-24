@@ -433,6 +433,34 @@ Timings from the chain: 5,000 → 50,000 **23 s**, 50,000 → argued **28 s**, t
 
 **The phone check was flaky and is now honest about it.** `/health` blips on a cold container; one failed fetch used to silently drop `/receipts` and `/export` while the summary still read "no horizontal overflow". It now retries `/health` three times, says loudly when it gives up and that the verdict covers four routes rather than six, retries each route once when CDP itself wedges (`Page.enable timed out` after a heavy page), and prints the route count in the summary. Green now reads `no horizontal overflow across 6 routes`.
 
+### 6.20 D11 hunt: a Playwright sweep and a code audit, and what they found (24 Sep 2026)
+
+**Method.** Playwright driving real Chrome over every console route at 1440 and 390, clicking every control and exercising VERIFY, REPLAY and both chain verdict filters end to end; console errors, failed requests, horizontal overflow, stuck loading states, junk text (`NaN`/`undefined`/`[object Object]`) and screenshots on each. Plus a read of the bot parser, the console API contract and every outbound call.
+
+**Ten defects, fixed in one batch (`0fd0509`):**
+
+| # | Defect | Why it mattered |
+|---|---|---|
+| 1 | `STATUS_RE` required "of"/"for", so **"vault status arc" fell through to unknown** | The documented long form worked; the form a judge actually types did not |
+| 2 | `HELP_RE` anchored the whole string, so **"hey what can you do" fell through** | Bare "hey" worked. A greeting in front of the question did not |
+| 3 | The unknown reply printed the **entire help text** | Three stray messages produced three identical walls. Now a short `nudge()` |
+| 4 | The error reply **echoed the raw internal message** into the chat | Can carry a URL or a path; the user can do nothing with it. Logged, not sent |
+| 5 | Non-text messages got **silence** | A sticker read as a dead bot |
+| 6 | The x402 facilitator calls were **unbounded** | A thrown error retried, but a hung socket left the buyer's browser waiting with money authorised |
+| 7 | SERV was **120 s with one retry** | A hung call could hold a Telegram reply for four minutes before the template took over. Now 45 s |
+| 8 | `apiText` had **no timeout at all**, unlike `api()` | A hung agent hung the report-preview page with no error state |
+| 9 | **No favicon existed** — `/favicon.ico`, `/icon.svg`, apple-touch all 404 | Blank tab icon and a console 404 on every page load |
+| 10 | The decision history rendered as **two giant colour blocks** | Every bar is `flex: 1`, so with few buckets each filled half the width. Capped at 44 px |
+
+**A flaw introduced by fix 6, caught before it shipped anywhere real.** Bounding the facilitator made a *settle* timeout return `facilitator-down`, and the 503 for that case said **"nothing was charged"**. That was true when the state only meant "the connection failed before anything happened", but a settle we stopped waiting for may already have been broadcast — so the message could be false. `Settlement` now carries `phase: 'verify' | 'settle'`: a verify failure still says nothing was charged, a settle timeout says the payment may or may not have gone through and to check the explorer before paying again. Neither sells a report or writes a ledger line. A unit test asserts the settle wording never claims "nothing was charged".
+
+**Confirmed NOT defects, after checking:**
+- **`redeem` is handled correctly.** `evaluate.ts:93` flips the delta sign and five rules return `notApplicable` with real reasons ("redeem (it reduces exposure)", "exit needs no clearance"). A redeem ALLOWs for the right reason, and labelling the amount in the asset is coherent — shares belong to the dormant build path.
+- **The bot and the API contain their own errors.** A poll failure retries with backoff; a handler throw is caught per message and never kills the poller; an API route throw returns a status.
+- `ERR_ABORTED` on `<Link>` prefetches and in-flight server actions is the client cancelling itself, not a failure — the sweep was wrong to flag it and now filters it.
+
+**Sweep result after the fixes: clean.** Six routes x two viewports, no console errors, no failed requests, no overflow, no stuck loading, no junk text, and every control verified (filters `REFUSED -> 10`, `ALLOWED -> 6`; VERIFY and REPLAY render results at both widths).
+
 ---
 
 ## 7. Sources

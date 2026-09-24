@@ -310,9 +310,20 @@ test('the report is behind x402: 402 without payment, the file after settlement,
   assert.equal(ledger.count(), 1, 'still one sale')
 
   // 4. facilitator unreachable -> 503, never a free file
-  const down = createConsoleHandler(deps(store, { ledger, settle: async () => ({ kind: 'facilitator-down', reason: 'fetch failed' }) }))
+  const down = createConsoleHandler(deps(store, { ledger, settle: async () => ({ kind: 'facilitator-down', reason: 'fetch failed', phase: 'verify' }) }))
   await assert.rejects(call(down, `/receipts/${allow.id}/report`, '', { payment: 'header' }), /could not reach the x402 facilitator/)
   assert.equal(ledger.count(), 1, 'an outage never sells or gives away a report')
+
+  // 5. A settle we stopped waiting for may still have been broadcast, so the reply must
+  //    NOT claim nothing was charged — it must tell the buyer to check before paying again.
+  const unconfirmed = createConsoleHandler(deps(store, { ledger, settle: async () => ({ kind: 'facilitator-down', reason: 'facilitator timed out after 20000ms', phase: 'settle' }) }))
+  await assert.rejects(call(unconfirmed, `/receipts/${allow.id}/report`, '', { payment: 'header' }), (err: Error) => {
+    assert.match(err.message, /did not confirm the settlement in time/)
+    assert.match(err.message, /may or may not have gone through/)
+    assert.doesNotMatch(err.message, /nothing was charged/, 'we cannot claim that about a settle we did not see the end of')
+    return true
+  })
+  assert.equal(ledger.count(), 1, 'an unconfirmed settlement is never recorded as a sale')
 })
 
 test('GET /x402 and /stats report the business honestly', async () => {

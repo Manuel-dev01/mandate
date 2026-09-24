@@ -46,8 +46,13 @@ export type Settlement =
   | { kind: 'paid'; txHash: string; payer: string; network: string }
   /** The header was present but not acceptable. The buyer gets a 402 again with this reason. */
   | { kind: 'invalid'; reason: string }
-  /** We could not reach the facilitator. Never serve the file on a maybe — say so and let them retry. */
-  | { kind: 'facilitator-down'; reason: string }
+  /**
+   * We could not reach the facilitator, or it did not answer in time. Never serve the
+   * file on a maybe. `phase` matters for what we are allowed to tell the buyer: a
+   * failure during `verify` moved no money, but a `settle` that we gave up waiting on
+   * may still have been broadcast — so we must not claim nothing was charged.
+   */
+  | { kind: 'facilitator-down'; reason: string; phase: 'verify' | 'settle' }
 
 const messageOf = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
@@ -116,13 +121,13 @@ export async function settlementOf(header: string, requirements: PaymentRequirem
 
   const verified = await attempt(() => f.verify(payload, requirements))
   if (!verified.ok) {
-    return verified.transport ? { kind: 'facilitator-down', reason: verified.reason } : { kind: 'invalid', reason: verified.reason }
+    return verified.transport ? { kind: 'facilitator-down', reason: verified.reason, phase: 'verify' } : { kind: 'invalid', reason: verified.reason }
   }
   if (!verified.value.isValid) return { kind: 'invalid', reason: verified.value.invalidReason ?? 'the facilitator rejected the payment' }
 
   const settled = await attempt(() => f.settle(payload, requirements))
   if (!settled.ok) {
-    return settled.transport ? { kind: 'facilitator-down', reason: settled.reason } : { kind: 'invalid', reason: settled.reason }
+    return settled.transport ? { kind: 'facilitator-down', reason: settled.reason, phase: 'settle' } : { kind: 'invalid', reason: settled.reason }
   }
   if (!settled.value.success) return { kind: 'invalid', reason: settled.value.errorReason ?? 'settlement failed' }
 
