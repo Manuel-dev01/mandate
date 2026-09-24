@@ -479,6 +479,33 @@ Two adversarial passes over the whole agent, each verified by executing the modu
 
 **After the batch:** 119 tests pass, the browser sweep is clean at both widths, and the live chain still reads **14 receipts, 0 breaks** under the stricter check — so the new comparison does not false-positive on real data.
 
+### 6.22 The three re-run audits: a crash anyone could trigger, and six unbacked claims (24 Sep 2026)
+
+The first three audit agents died on a rate limit having produced nothing; re-run scoped to what was still uncovered.
+
+**One HTTP request killed the whole replica. Reproduced before fixing.** `console/api.ts` built `new URL(req.url)` **outside** the try, inside an async handler, and nothing in the process handled `unhandledRejection`. Node's HTTP parser accepts request targets `new URL` rejects — `//%`, `//[`, `//[::1` — so a single `GET //%` from any passing scanner became an unhandled rejection and exited the process. On Railway that is the Telegram bot **and** the console API in one replica: beats 1–5 dark until a container restart. A minimal server mirroring those two lines exits with code 1. Fixed by building the URL defensively (400 on failure) plus process-level handlers in `serve.ts`. **Verified against production after deploy: `//[` and `//[::1` now return 400, and uptime climbed 25 s → 82 s with no restart.**
+
+**Three more ways the one replica could go dark:** `server.listen` had no `'error'` listener, so `EADDRINUSE` killed the bot; a bad Telegram token called `process.exit(1)`, blacking out beats 4–5 because *Telegram* auth failed; and `explain.ts` rethrew on SERV auth/credits — contradicting its own header — so a credits error destroyed a verdict that had **already been computed deterministically before explain ran**. Prose is cosmetic; the decision is not.
+
+**A torn compile-cache file broke beat 1 permanently.** The `safeParse` was guarded, the `readFileSync`/`JSON.parse` were not, and the write was non-atomic — so a partial write left a file that threw on every later paste of the same policy, and the volume outlives restarts. Guarded read, write-then-rename, and the rule-set hash is now verified so a stale entry cannot make beat 4 print FAILED for a decision that was fine.
+
+**Six claims the code could not back** — the worst class for this product:
+
+| Claim | Why it was unbacked |
+|---|---|
+| `/vaults`: "always refused under Testnet only" | Counted only REFUSEs on chain 4663 — never mainnet proposals that were ALLOWED, never whether the network rule was cited. Now three counts; live: 3 / 3 / 3 |
+| "compiled into seven rules" (landing ×2, export, agent card) | The DSL caps seven **types**; a mandate compiles to one to seven |
+| Receipt: "passed against live vault data" | Rendered unconditionally, 300 px below its own STALE badge |
+| Landing: "all N so far" | N = 0 when the agent was unreachable, beside a header saying "agent unreachable" |
+| Bot: "not paused" / "whitelist not enforced" | Both were the reassuring answer when the check returned `null`; the second contradicted the bot's own list view |
+| Agent card | It **is** the ERC-8004 token URI and never named its own registration. Now `{agentId: 9316, agentRegistry: eip155:84532:0x8004A818…}`, live |
+
+**Presentation:** on a phone the paper receipt ellipsised exactly the actual-vs-limit numbers — and an ellipsis is not horizontal overflow, so `overflow-check.mjs` could never have caught it. The export tile counted preview lines and printed "21+ lines" above "Preview: 16 of 66". The "Signed txns" tile was a literal `0` rendered as a live counter, putting the word "signed" on the one surface whose claim is that nothing signs; dropped, since the footer says it in prose.
+
+**Also:** no timeout on `sendMessage`/`getMe` (a hung call froze the sequential poll loop for minutes, silently); a single over-long line was never split, so Telegram rejected it and the plain-text retry resent the same bytes; the OpenServ prompt declared five capabilities while registering six, leaving `export_report` — the paid rail's only entry — unroutable.
+
+**Known and accepted, not fixed:** the declared portfolio's asset symbol is never reconciled with the target vault's, so a Robinhood receipt reads "1,000 USDC" although that vault holds USDG. The amount and every percentage are correct; only the symbol names the book's accounting unit rather than the vault's. Changing it alters `numbers.action`, which is inside the decision hash, so it is a semantic change to the evaluator three days from submission. Recorded rather than risked.
+
 ---
 
 ## 7. Sources
