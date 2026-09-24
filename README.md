@@ -175,6 +175,19 @@ MANDATE_API_KEY=… node scripts/preflight.mjs  # READY or not — the gate befo
 
 Optional: `npm run identity` (ERC-8004 registration), `npm run buy -- <receiptId>` (buy a report over x402), `npm run provision` / `npm run agent` (the OpenServ platform route).
 
+<details>
+<summary><b>If <code>npm run build --workspace=web</code> fails with a webpack error</b></summary>
+
+`app/layout.tsx` uses `next/font/google`, which downloads the font files from
+**`fonts.gstatic.com` at build time** and then self-hosts them — the deployed site
+makes no runtime request to Google. That download is the only external dependency of
+the build, so on a network that blocks or cannot reach `gstatic.com` the build fails
+inside `next-font-loader` with a stack that does not say so.
+
+Nothing else needs it: `npm ci`, `npm run typecheck` and the 119 unit tests all pass
+with no network and no `.env`.
+</details>
+
 ## Deployment
 
 Both services deploy from GitHub on a push to `master`: the console on **Vercel** (root directory `packages/web`), the agent on **Railway** (`packages/agent/Dockerfile`, a volume at `/data`, **one replica** — two Telegram pollers conflict). A push briefly interrupts the bot, so never deploy mid-demo. `node scripts/watch-deploys.mjs` prints a line whenever either changes state.
