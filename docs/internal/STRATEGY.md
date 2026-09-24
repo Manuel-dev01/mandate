@@ -160,7 +160,7 @@ A plain-English investment mandate ("preserve capital; never exceed 40% in one v
 
 **D12 — Narrative assets.** Record the 3-minute demo video. README with architecture diagram. One-page landing. Written revenue model with real numbers (TAM, fee structure, unit economics).
 
-> **Done early (23 Sep):** the architecture diagram and the one-page landing already shipped with the README and the console. The written revenue model is [`docs/REVENUE.md`](REVENUE.md), built on **measured** unit economics — 12 live decisions, 886–1,014 tokens each, marginal cost under $0.006 against a $0.50 price — with every assumed figure labelled as assumed and the sizing shown as arithmetic rather than asserted. Remaining for D12: **record the video**.
+> **Done early (23 Sep):** the architecture diagram and the one-page landing already shipped with the README and the console. The written revenue model is [`docs/REVENUE.md`](../REVENUE.md), built on **measured** unit economics — 12 live decisions, 886–1,014 tokens each, marginal cost under $0.006 against a $0.50 price — with every assumed figure labelled as assumed and the sizing shown as arithmetic rather than asserted. Remaining for D12: **record the video**.
 
 **D13 — Submission package** + buffer for the inevitable.
 
@@ -168,7 +168,7 @@ A plain-English investment mandate ("preserve capital; never exceed 40% in one v
 
 ### Roadmap status — 23 Sep 2026
 
-The roadmap above is the plan of record; this is what actually happened against it. Evidence in `docs/RECON.md` §6.
+The roadmap above is the plan of record; this is what actually happened against it. Evidence in `../RECON.md` §6.
 
 | Day | Status | Amendments to the plan |
 |---|---|---|

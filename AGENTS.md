@@ -13,7 +13,7 @@ Start here:
 | Want | Read |
 |---|---|
 | Working agreement, verified constants, guardrails | [`CLAUDE.md`](./CLAUDE.md) |
-| The six-beat demo — the build's real spec | [`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) |
+| The six-beat demo — the build's real spec | [`docs/internal/DEMO_SCRIPT.md`](./docs/internal/DEMO_SCRIPT.md) |
 | Live-probe evidence behind every claim | [`docs/RECON.md`](./docs/RECON.md) |
 | The seven rule types | [`docs/MANDATE_DSL.md`](./docs/MANDATE_DSL.md) |
 | The receipt and its hashes | [`docs/RECEIPT.md`](./docs/RECEIPT.md) |

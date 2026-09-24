@@ -8,7 +8,7 @@ A user writes a treasury policy in plain English. Mandate compiles it into a bou
 
 Built for **SERV Hackathon Edition 01** (14–27 Sep 2026). Tracks: **RWA Vaults (IXS)** + **Mainnet & MCP (Robinhood Chain)**.
 
-> **The demo is the spec.** Read `docs/DEMO_SCRIPT.md` before writing any feature. If a change does not make one of those six beats land harder, it is out of scope.
+> **The demo is the spec.** Read `docs/internal/DEMO_SCRIPT.md` before writing any feature. If a change does not make one of those six beats land harder, it is out of scope.
 
 ---
 

@@ -11,7 +11,7 @@ Paste **Prompt 1** into a fresh Claude Code session in this folder to begin D1. 
 **Current state (13 Sep, end of D0):** scaffold complete, `node scripts/smoke.mjs` is **11/11 green**, `SERV_API_KEY` works and has credits. Both integration risks are retired. Nothing in `packages/agent/src/` is implemented yet.
 
 ```
-Read CLAUDE.md and docs/RECON.md before writing anything. Every endpoint, vault ID and
+Read CLAUDE.md and ../RECON.md before writing anything. Every endpoint, vault ID and
 chain ID you need is already verified there — do not re-derive them, and do not trust the
 IXS skills repo .env.example (it is stale and points at a Base Sepolia vault that no
 longer exists).
@@ -91,7 +91,7 @@ interpretation rather than silently dropping a rule.
 ## Prompt 3 — D3: the compliance evaluator (core IP) ✅ done
 
 ```
-Read CLAUDE.md, docs/MANDATE_DSL.md and docs/DEMO_SCRIPT.md.
+Read CLAUDE.md, docs/MANDATE_DSL.md and DEMO_SCRIPT.md.
 
 Build `packages/agent/src/mandate/evaluate.ts`:
 
@@ -122,7 +122,7 @@ identical output.
 ## Prompt 4 — D4: the execution path ✅ built, then shelved (RECON §6.10)
 
 ```
-Read CLAUDE.md, docs/RECON.md §6 and docs/DEMO_SCRIPT.md beat 2.
+Read CLAUDE.md, ../RECON.md §6 and DEMO_SCRIPT.md beat 2.
 
 STATE: D1–D3 are committed. evaluate() produces a hashed Decision; nothing signs or
 broadcasts yet. Live facts, re-probed 16 Sep: only IXHYB-BSC (6a278b40a7d16b245d665479,
@@ -172,7 +172,7 @@ show real output. If the burner is funded, show the BSC tx hashes.
 ## Prompt 5 — D5: the audit trail ✅ done
 
 ```
-Read CLAUDE.md and docs/DEMO_SCRIPT.md beats 4 and 5.
+Read CLAUDE.md and DEMO_SCRIPT.md beats 4 and 5.
 
 STATE: decide + prove is the product. Nothing executes (IXS: no vault accessible).
 
@@ -190,7 +190,7 @@ Decision.explanation (unhashed SERV trace). Verified with the two live cases.
 ## Prompt 6 — D6: the Telegram surface ✅ handlers done; platform wiring pending account decision
 
 ```
-Read CLAUDE.md, docs/RECON.md §6.11 and docs/DEMO_SCRIPT.md beats 1–3.
+Read CLAUDE.md, ../RECON.md §6.11 and DEMO_SCRIPT.md beats 1–3.
 
 GOAL: the demo's Telegram surface on OpenServ. Five capabilities that return the
 EXACT text to relay — set_mandate, propose_action, get_receipt, vault_status, help —
@@ -252,7 +252,7 @@ the file and claim success.
 
 ## Prompt hygiene that matters for this build
 
-- **Always start with "Read CLAUDE.md and docs/RECON.md."** They contain live-verified constants. Re-deriving them wastes a day and risks reintroducing the dead Base Sepolia endpoint.
+- **Always start with "Read CLAUDE.md and ../RECON.md."** They contain live-verified constants. Re-deriving them wastes a day and risks reintroducing the dead Base Sepolia endpoint.
 - **State the day and its single goal.** This build is deadline-bound; a prompt without a scope boundary invites a model to build D7 features on D2.
 - **Name what NOT to build.** The top documented risk here is scope creep in the mandate DSL.
 - **Demand real output.** Ask for the actual command output, not a claim of success.
