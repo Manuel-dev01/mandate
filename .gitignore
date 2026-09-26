@@ -38,3 +38,8 @@ packages/web/tsconfig.tsbuildinfo
 # The rendered demo video: 94 MB of binary that re-renders from demo/studio.
 # The sources and plates ARE tracked, so anyone can rebuild it.
 demo/*.mp4
+
+# Synthesised scratch narration and TTS work dirs — the script in demo/narration.json
+# is the source of truth; audio is regenerated or replaced with a human read.
+demo/studio/voice*/
+demo/*.wav
