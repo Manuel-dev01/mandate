@@ -34,3 +34,7 @@ Thumbs.db
 next-env.d.ts
 .vercel
 packages/web/tsconfig.tsbuildinfo
+
+# The rendered demo video: 94 MB of binary that re-renders from demo/studio.
+# The sources and plates ARE tracked, so anyone can rebuild it.
+demo/*.mp4

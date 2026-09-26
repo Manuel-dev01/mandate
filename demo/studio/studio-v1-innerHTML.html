@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Mandate — demo compositor</title>
+<style>
+  @font-face { font-family: 'JB'; src: local('JetBrains Mono'), local('Consolas'), local('Menlo'); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #080807; }
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #f2ede3;
+  }
+  .stage { position: absolute; inset: 0; overflow: hidden; }
+
+  /* ---------- background: brand-complementing, very dark, softly lit ---------- */
+  .bg { position: absolute; inset: 0; background:
+      radial-gradient(1200px 800px at 22% 12%, #24211c 0%, transparent 60%),
+      radial-gradient(1000px 700px at 82% 88%, #1e1a17 0%, transparent 62%),
+      linear-gradient(160deg, #0e0d0b 0%, #080807 55%, #0b0a09 100%); }
+  .bg::after { content:''; position:absolute; inset:0; opacity:.05; mix-blend-mode:overlay;
+    background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 3px 3px; }
+
+  /* ---------- browser frame ---------- */
+  .frameWrap { position:absolute; left:50%; top:50%; transform-origin:center center; }
+  .frame { position:relative; border-radius:16px; overflow:hidden; background:#121110;
+    border:1px solid rgba(255,255,255,.09);
+    box-shadow: 0 60px 140px rgba(0,0,0,.72), 0 18px 46px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.5); }
+  .chrome { height:44px; background:linear-gradient(#1a1917,#141312); display:flex; align-items:center; gap:14px;
+    padding:0 16px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .dots { display:flex; gap:8px; }
+  .dot { width:11px; height:11px; border-radius:50%; }
+  .url { flex:1; height:26px; border-radius:7px; background:#0d0c0b; border:1px solid rgba(255,255,255,.07);
+    display:flex; align-items:center; padding:0 12px; font-family:'JB',monospace; font-size:12.5px;
+    color:#8d857a; letter-spacing:.02em; }
+  .url b { color:#cdc4b6; font-weight:500; }
+  .viewport { position:relative; overflow:hidden; background:#0d0d0c; }
+  .viewport img { position:absolute; left:0; top:0; transform-origin:0 0; image-rendering:auto; }
+
+  /* ---------- cursor ---------- */
+  .cursor { position:absolute; width:34px; height:34px; pointer-events:none; filter:drop-shadow(0 4px 10px rgba(0,0,0,.65)); }
+  .ring { position:absolute; border:2.5px solid rgba(242,237,227,.85); border-radius:50%; pointer-events:none; }
+
+  /* ---------- lower third ---------- */
+  .lower { position:absolute; left:96px; bottom:62px; max-width:1240px; z-index:4; }
+  .scrim { position:absolute; left:0; right:0; bottom:0; height:300px; z-index:3; pointer-events:none;
+    background:linear-gradient(to top, rgba(6,6,5,.93) 0%, rgba(6,6,5,.72) 42%, transparent 100%); }
+  .kicker { font-family:'JB',monospace; font-size:13px; letter-spacing:.24em; text-transform:uppercase; color:#8f8578; margin-bottom:12px; }
+  .cap { font-size:31px; line-height:1.34; font-weight:450; letter-spacing:-.005em; color:#f4efe6; }
+  .cap em { font-style:normal; color:#e0563f; }
+  .cap b { font-weight:650; color:#fff; }
+
+  /* ---------- title / slide cards ---------- */
+  .card { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; padding:0 150px; }
+  .card h1 { font-family:'Newsreader',Georgia,serif; font-size:104px; line-height:1.02; letter-spacing:-.03em; font-weight:400; }
+  .card h2 { font-family:'Newsreader',Georgia,serif; font-size:66px; line-height:1.12; letter-spacing:-.02em; font-weight:400; margin-bottom:34px; }
+  .card p { font-size:30px; line-height:1.55; color:#b8aea0; max-width:1180px; }
+  .card .rule { width:120px; height:2px; background:#e0563f; margin:34px 0 30px; }
+  .badge { font-family:'JB',monospace; font-size:13px; letter-spacing:.2em; text-transform:uppercase; color:#8f8578; }
+
+  /* ---------- evidence panel ---------- */
+  .ev { position:absolute; inset:0; padding:96px 140px; display:flex; flex-direction:column; }
+  .evHead { display:flex; align-items:center; gap:16px; margin-bottom:10px; }
+  .evTag { font-family:'JB',monospace; font-size:12.5px; letter-spacing:.2em; text-transform:uppercase;
+    color:#0d0d0c; background:#c9bda8; padding:6px 12px; border-radius:4px; font-weight:600; }
+  .evTitle { font-family:'Newsreader',Georgia,serif; font-size:52px; letter-spacing:-.02em; }
+  .evSub { font-family:'JB',monospace; font-size:16px; color:#8f8578; margin-bottom:44px; letter-spacing:.02em; }
+  table.ev { width:100%; border-collapse:collapse; font-family:'JB',monospace; font-size:21px; }
+  table.ev td { padding:17px 14px; border-bottom:1px solid rgba(255,255,255,.08); color:#cdc4b6; }
+  table.ev td.k { color:#8f8578; width:290px; }
+  table.ev td.v b { color:#fff; font-weight:500; }
+  .ok { color:#4ea56b; }
+  .hl { position:absolute; border-radius:6px; background:rgba(224,86,63,.14); border:1px solid rgba(224,86,63,.55); pointer-events:none; }
+
+  /* ---------- disclosure ---------- */
+  .disc { position:absolute; right:40px; bottom:34px; font-family:'JB',monospace; font-size:13px;
+    letter-spacing:.06em; color:#7d746a; background:rgba(8,8,7,.72); border:1px solid rgba(255,255,255,.1);
+    padding:9px 14px; border-radius:6px; }
+  .stillTag { position:absolute; left:0; top:-40px; font-family:'JB',monospace; font-size:14px;
+    letter-spacing:.14em; text-transform:uppercase; color:#a9a093; background:rgba(20,19,17,.92);
+    border:1px solid rgba(255,255,255,.12); padding:8px 14px; border-radius:6px; white-space:nowrap; }
+  .vignette { position:absolute; inset:0; pointer-events:none;
+    box-shadow: inset 0 0 340px rgba(0,0,0,.6); }
+</style>
+</head>
+<body>
+<div class="stage"><div class="bg"></div><div id="root"></div><div class="vignette"></div></div>
+<script src="timeline.js"></script>
+<script>
+// ------------------------------------------------------------------ easing
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x)
+// Screen-Studio-ish: slow out of rest, settle gently. No overshoot on text.
+const easeInOut = (x) => { x = clamp01(x); return x < 0.5 ? 4*x*x*x : 1 - Math.pow(-2*x+2, 3)/2 }
+const easeOut  = (x) => { x = clamp01(x); return 1 - Math.pow(1 - x, 3) }
+const lerp = (a, b, t) => a + (b - a) * t
+
+/** Piecewise keyframes: [{at, v}] in scene-local seconds. */
+function kf(list, t, ease = easeInOut) {
+  if (!list || !list.length) return 0
+  if (t <= list[0].at) return list[0].v
+  for (let i = 0; i < list.length - 1; i++) {
+    const a = list[i], b = list[i + 1]
+    if (t >= a.at && t <= b.at) {
+      const u = b.at === a.at ? 1 : (t - a.at) / (b.at - a.at)
+      return lerp(a.v, b.v, ease(u))
+    }
+  }
+  return list[list.length - 1].v
+}
+
+const T = window.__TIMELINE__
+const root = document.getElementById('root')
+
+function sceneAt(t) {
+  let acc = 0
+  for (const s of T.scenes) {
+    if (t < acc + s.dur) return { s, local: t - acc, start: acc }
+    acc += s.dur
+  }
+  const last = T.scenes[T.scenes.length - 1]
+  return { s: last, local: last.dur, start: acc - last.dur }
+}
+
+// ---------------------------------------------------------------- renderers
+function fadeWrap(inner, local, dur, fin = 0.55, fout = 0.5) {
+  const a = Math.min(easeOut(local / fin), easeOut((dur - local) / fout), 1)
+  return `<div style="position:absolute;inset:0;opacity:${a.toFixed(4)}">${inner}</div>`
+}
+
+function renderScreen(s, local) {
+  const VW = 1320, VH = 743, CY = 462      // frame viewport, and its centre on the stage
+  // Frame a measured box instead of guessed coordinates: pick the zoom that fits the
+  // box with padding, and centre on it. Keyframes interpolate between framings.
+  function framing(view, t) {
+    const b = {
+      x: kf(view.map((v) => ({ at: v.at, v: v.box.x })), t),
+      y: kf(view.map((v) => ({ at: v.at, v: v.box.y })), t),
+      w: kf(view.map((v) => ({ at: v.at, v: v.box.w })), t),
+      h: kf(view.map((v) => ({ at: v.at, v: v.box.h })), t),
+    }
+    const pad = kf(view.map((v) => ({ at: v.at, v: v.pad ?? 1.6 })), t)
+    const zw = 1920 / Math.max(b.w * pad, 200)
+    const zh = 1080 / Math.max(b.h * pad, 120)
+    const z = Math.max(1, Math.min(zw, zh, 2.0))
+    return { z, px: b.x + b.w / 2, py: b.y + b.h / 2 }
+  }
+  let z, px, py
+  if (s.view) ({ z, px, py } = framing(s.view, local))
+  else { z = kf(s.zoom, local); px = kf(s.panX, local); py = kf(s.panY, local) }
+  // Keep the camera inside the plate so no scene shows empty gutters.
+  const halfW = 960 / z, halfH = 540 / z
+  px = Math.max(halfW, Math.min(1920 - halfW, px))
+  py = Math.max(halfH, Math.min(1080 - halfH, py))
+
+  const scale = (VW / 1920) * z
+  const ox = (VW / 2) - (px * scale)
+  const oy = (VH / 2) - (py * scale)
+  const frameScale = kf(s.frameScale || [{ at: 0, v: 1 }], local)
+  const tag = s.still ? `<div class="stillTag">${s.still}</div>` : ''
+  return `
+  <div class="frameWrap" style="top:${CY}px;transform:translate(-50%,-50%) scale(${frameScale.toFixed(4)})">
+    ${tag}
+    <div class="frame" style="width:${VW + 2}px">
+      <div class="chrome">
+        <div class="dots"><span class="dot" style="background:#e0563f"></span><span class="dot" style="background:#d8a13c"></span><span class="dot" style="background:#4ea56b"></span></div>
+        <div class="url"><span>${s.urlPre || 'mandate-console-five.vercel.app'}</span><b>${s.urlPath || ''}</b></div>
+      </div>
+      <div class="viewport" style="width:${VW}px;height:${VH}px">
+        <img src="assets/${s.plate}" style="width:${(1920 * scale).toFixed(2)}px;transform:translate(${ox.toFixed(2)}px,${oy.toFixed(2)}px)" />
+      </div>
+    </div>
+  </div>`
+}
+
+function renderCursor(s, local) {
+  if (!s.cursor) return ''
+  const cx = kf(s.cursor.x, local), cy = kf(s.cursor.y, local)
+  let ring = ''
+  if (s.cursor.click != null) {
+    const d = local - s.cursor.click
+    if (d >= 0 && d < 0.75) {
+      const u = d / 0.75
+      const r = 10 + 46 * easeOut(u)
+      ring = `<div class="ring" style="left:${cx - r}px;top:${cy - r}px;width:${2*r}px;height:${2*r}px;opacity:${(1 - u).toFixed(3)}"></div>`
+    }
+  }
+  return `${ring}<svg class="cursor" style="left:${cx}px;top:${cy}px" viewBox="0 0 24 24" fill="none">
+    <path d="M4 2l14 8.5-6.2 1.3L9 19.5 4 2z" fill="#f7f3ec" stroke="#0d0d0c" stroke-width="1.4" stroke-linejoin="round"/></svg>`
+}
+
+function renderLower(s, local) {
+  if (!s.kicker && !s.cap) return ''
+  const a = Math.min(easeOut((local - (s.capIn ?? 0.35)) / 0.55), easeOut((s.dur - 0.45 - local) / 0.5), 1)
+  if (a <= 0) return ''
+  const y = lerp(16, 0, easeOut((local - (s.capIn ?? 0.35)) / 0.7))
+  return `<div class="lower" style="opacity:${a.toFixed(3)};transform:translateY(${y.toFixed(2)}px)">
+    ${s.kicker ? `<div class="kicker">${s.kicker}</div>` : ''}
+    ${s.cap ? `<div class="cap">${s.cap}</div>` : ''}</div>`
+}
+
+function renderCard(s, local) {
+  const a = Math.min(easeOut(local / 0.7), easeOut((s.dur - local) / 0.6), 1)
+  const y = lerp(22, 0, easeOut(local / 1.1))
+  return `<div class="card" style="opacity:${a.toFixed(3)};transform:translateY(${y.toFixed(2)}px)">
+    ${s.badge ? `<div class="badge" style="margin-bottom:28px">${s.badge}</div>` : ''}
+    ${s.h1 ? `<h1>${s.h1}</h1>` : ''}
+    ${s.h2 ? `<h2>${s.h2}</h2>` : ''}
+    ${s.rule ? `<div class="rule"></div>` : ''}
+    ${s.body ? `<p>${s.body}</p>` : ''}
+  </div>`
+}
+
+function renderEvidence(s, local) {
+  const a = Math.min(easeOut(local / 0.7), easeOut((s.dur - local) / 0.6), 1)
+  const rows = s.rows.map((r, i) => {
+    const ra = easeOut((local - 0.75 - i * 0.28) / 0.6)
+    return `<tr style="opacity:${clamp01(ra).toFixed(3)}"><td class="k">${r[0]}</td><td class="v">${r[1]}</td></tr>`
+  }).join('')
+  return `<div class="ev" style="opacity:${a.toFixed(3)}">
+    <div class="evHead"><span class="evTag" style="background:#c9bda8">${s.tag || 'Evidence'}</span>
+      <span class="evTitle">${s.title}</span></div>
+    <div class="evSub">${s.sub || ''}</div>
+    <table class="ev"><tbody>${rows}</tbody></table>
+  </div>`
+}
+
+// ------------------------------------------------------------------- draw
+window.drawAt = function (t) {
+  const { s, local } = sceneAt(t)
+  let inner = ''
+  if (s.type === 'card') inner = renderCard(s, local)
+  else if (s.type === 'evidence') inner = renderEvidence(s, local)
+  else inner = renderScreen(s, local) + renderCursor(s, local)
+  if (s.type !== 'card' && s.type !== 'evidence') inner += '<div class="scrim"></div>'
+  inner += renderLower(s, local)
+  if (s.disclose) inner += `<div class="disc">${s.disclose}</div>`
+  root.innerHTML = fadeWrap(inner, local, s.dur, s.fin ?? 0.5, s.fout ?? 0.45)
+}
+window.__TOTAL__ = T.scenes.reduce((a, s) => a + s.dur, 0)
+drawAt(0)
+</script>
+</body>
+</html>

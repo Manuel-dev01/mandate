@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Mandate — demo compositor</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1920px; height:1080px; overflow:hidden; background:#080807; }
+  body { font-family:'Inter','Segoe UI',system-ui,sans-serif; -webkit-font-smoothing:antialiased; color:#f2ede3; }
+  .stage { position:absolute; inset:0; overflow:hidden; }
+
+  .bg { position:absolute; inset:0; background:
+      radial-gradient(1200px 800px at 22% 12%, #24211c 0%, transparent 60%),
+      radial-gradient(1000px 700px at 82% 88%, #1e1a17 0%, transparent 62%),
+      linear-gradient(160deg, #0e0d0b 0%, #080807 55%, #0b0a09 100%);
+    /* promoted to its own layer so it is painted once, not per frame */
+    transform:translateZ(0); contain:strict; }
+
+  #content { position:absolute; inset:0; will-change:opacity; }
+
+  .frameWrap { position:absolute; left:50%; top:462px; transform-origin:center center; will-change:transform; }
+  .frame { position:relative; border-radius:16px; overflow:hidden; background:#121110;
+    border:1px solid rgba(255,255,255,.09);
+    box-shadow:0 26px 60px rgba(0,0,0,.78), 0 8px 20px rgba(0,0,0,.5), 0 0 0 1px rgba(0,0,0,.5); }
+  .chrome { height:44px; background:linear-gradient(#1a1917,#141312); display:flex; align-items:center; gap:14px;
+    padding:0 16px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .dots { display:flex; gap:8px; }
+  .dot { width:11px; height:11px; border-radius:50%; }
+  .url { flex:1; height:26px; border-radius:7px; background:#0d0c0b; border:1px solid rgba(255,255,255,.07);
+    display:flex; align-items:center; padding:0 12px; font-family:'JetBrains Mono',Consolas,monospace;
+    font-size:12.5px; color:#8d857a; letter-spacing:.02em; }
+  .url b { color:#cdc4b6; font-weight:500; }
+  .viewport { position:relative; overflow:hidden; background:#0d0d0c; }
+  .viewport img { position:absolute; left:0; top:0; transform-origin:0 0; will-change:transform; backface-visibility:hidden; }
+
+  .cursor { position:absolute; left:0; top:0; width:34px; height:34px; pointer-events:none;
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.65)); will-change:transform; }
+  .ring { position:absolute; left:0; top:0; border:2.5px solid rgba(242,237,227,.85); border-radius:50%;
+    pointer-events:none; will-change:transform,opacity; }
+
+  .scrim { position:absolute; left:0; right:0; bottom:0; height:300px; pointer-events:none;
+    background:linear-gradient(to top, rgba(6,6,5,.93) 0%, rgba(6,6,5,.72) 42%, transparent 100%); }
+  .lower { position:absolute; left:96px; bottom:62px; max-width:1240px; will-change:transform,opacity; }
+  .kicker { font-family:'JetBrains Mono',Consolas,monospace; font-size:13px; letter-spacing:.24em;
+    text-transform:uppercase; color:#8f8578; margin-bottom:12px; }
+  .cap { font-size:31px; line-height:1.34; font-weight:450; letter-spacing:-.005em; color:#f4efe6; }
+  .cap em { font-style:normal; color:#e0563f; }
+  .cap b { font-weight:650; color:#fff; }
+
+  .card { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center;
+    padding:0 150px; will-change:transform,opacity; }
+  .card h1 { font-family:'Newsreader',Georgia,serif; font-size:104px; line-height:1.02; letter-spacing:-.03em; font-weight:400; }
+  .card h2 { font-family:'Newsreader',Georgia,serif; font-size:66px; line-height:1.12; letter-spacing:-.02em; font-weight:400; margin-bottom:34px; }
+  .card p { font-size:30px; line-height:1.55; color:#b8aea0; max-width:1180px; }
+  .card .rule { width:120px; height:2px; background:#e0563f; margin:34px 0 30px; }
+  .badge { font-family:'JetBrains Mono',Consolas,monospace; font-size:13px; letter-spacing:.2em;
+    text-transform:uppercase; color:#8f8578; margin-bottom:28px; }
+
+  .ev { position:absolute; inset:0; padding:96px 140px; display:flex; flex-direction:column; will-change:opacity; }
+  .evHead { display:flex; align-items:center; gap:16px; margin-bottom:10px; }
+  .evTag { font-family:'JetBrains Mono',Consolas,monospace; font-size:12.5px; letter-spacing:.2em;
+    text-transform:uppercase; color:#0d0d0c; background:#c9bda8; padding:6px 12px; border-radius:4px; font-weight:600; }
+  .evTitle { font-family:'Newsreader',Georgia,serif; font-size:52px; letter-spacing:-.02em; }
+  .evSub { font-family:'JetBrains Mono',Consolas,monospace; font-size:16px; color:#8f8578;
+    margin-bottom:44px; letter-spacing:.02em; }
+  table.evt { width:100%; border-collapse:collapse; font-family:'JetBrains Mono',Consolas,monospace; font-size:21px; }
+  table.evt td { padding:17px 14px; border-bottom:1px solid rgba(255,255,255,.08); color:#cdc4b6; }
+  table.evt td.k { color:#8f8578; width:300px; }
+  table.evt td.v b { color:#fff; font-weight:500; }
+  .ok { color:#4ea56b; }
+
+  .disc { position:absolute; right:40px; bottom:34px; font-family:'JetBrains Mono',Consolas,monospace;
+    font-size:13px; letter-spacing:.06em; color:#7d746a; background:rgba(8,8,7,.72);
+    border:1px solid rgba(255,255,255,.1); padding:9px 14px; border-radius:6px; }
+  .stillTag { position:absolute; left:0; top:-40px; font-family:'JetBrains Mono',Consolas,monospace;
+    font-size:14px; letter-spacing:.14em; text-transform:uppercase; color:#a9a093;
+    background:rgba(20,19,17,.92); border:1px solid rgba(255,255,255,.12);
+    padding:8px 14px; border-radius:6px; white-space:nowrap; }
+  .vignette { position:absolute; inset:0; pointer-events:none; transform:translateZ(0);
+    background:radial-gradient(ellipse 1500px 900px at 50% 48%, transparent 40%, rgba(0,0,0,.62) 100%); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="bg"></div>
+  <div id="content">
+    <div id="screenLayer">
+      <div class="frameWrap" id="fw">
+        <div class="stillTag" id="stillTag"></div>
+        <div class="frame" id="frame">
+          <div class="chrome">
+            <div class="dots"><span class="dot" style="background:#e0563f"></span><span class="dot" style="background:#d8a13c"></span><span class="dot" style="background:#4ea56b"></span></div>
+            <div class="url"><span id="urlPre"></span><b id="urlPath"></b></div>
+          </div>
+          <div class="viewport" id="vp"><img id="plate" /></div>
+        </div>
+      </div>
+      <div class="ring" id="ring"></div>
+      <svg class="cursor" id="cursor" viewBox="0 0 24 24" fill="none">
+        <path d="M4 2l14 8.5-6.2 1.3L9 19.5 4 2z" fill="#f7f3ec" stroke="#0d0d0c" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      <div class="scrim" id="scrim"></div>
+    </div>
+    <div class="card" id="card"></div>
+    <div class="ev" id="ev"></div>
+    <div class="lower" id="lower"><div class="kicker" id="kicker"></div><div class="cap" id="cap"></div></div>
+    <div class="disc" id="disc"></div>
+  </div>
+  <div class="vignette"></div>
+</div>
+<script src="timeline.js"></script>
+<script>
+// Persistent DOM, mutated per frame. Rebuilding innerHTML every frame forced the
+// browser to re-decode a 3840x2160 plate 60 times a second and capped the render
+// at ~2 fps; only styles and text change here, and only when they actually differ.
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x)
+const easeInOut = (x) => { x = clamp01(x); return x < .5 ? 4*x*x*x : 1 - Math.pow(-2*x+2,3)/2 }
+const easeOut  = (x) => { x = clamp01(x); return 1 - Math.pow(1-x,3) }
+const lerp = (a,b,t) => a + (b-a)*t
+function kf(list, t) {
+  if (!list || !list.length) return 0
+  if (t <= list[0].at) return list[0].v
+  for (let i=0;i<list.length-1;i++){ const a=list[i], b=list[i+1]
+    if (t>=a.at && t<=b.at){ const u = b.at===a.at ? 1 : (t-a.at)/(b.at-a.at); return lerp(a.v,b.v,easeInOut(u)) } }
+  return list[list.length-1].v
+}
+
+const T = window.__TIMELINE__
+const E = {}
+for (const id of ['content','screenLayer','fw','frame','vp','plate','stillTag','urlPre','urlPath',
+                  'cursor','ring','scrim','card','ev','lower','kicker','cap','disc'])
+  E[id] = document.getElementById(id)
+
+const VW = 1320, VH = 743, K = VW / 1920
+E.frame.style.width = (VW + 2) + 'px'
+E.vp.style.width = VW + 'px'
+E.vp.style.height = VH + 'px'
+
+const starts = []
+{ let acc = 0; for (const s of T.scenes) { starts.push(acc); acc += s.dur } }
+function sceneAt(t) {
+  let lo = 0, hi = T.scenes.length - 1
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (t >= starts[m]) lo = m; else hi = m - 1 }
+  return { i: lo, s: T.scenes[lo], local: t - starts[lo] }
+}
+
+let curScene = -1
+let evRows = []
+function applySceneStatics(i, s) {
+  curScene = i
+  const isScreen = s.type !== 'card' && s.type !== 'evidence'
+  E.screenLayer.style.display = isScreen ? '' : 'none'
+  E.card.style.display = s.type === 'card' ? '' : 'none'
+  E.ev.style.display = s.type === 'evidence' ? '' : 'none'
+  E.disc.style.display = s.disclose ? '' : 'none'
+  if (s.disclose) E.disc.textContent = s.disclose
+
+  if (isScreen) {
+    const src = 'assets/' + s.plate
+    if (!E.plate.getAttribute('src') || !E.plate.getAttribute('src').endsWith(s.plate)) {
+      E.plate.src = src
+      E.plate.style.width = VW + 'px'   // zoom-1 baseline; scale() does the rest
+    }
+    E.urlPre.textContent = s.urlPre || 'mandate-console-five.vercel.app'
+    E.urlPath.textContent = s.urlPath || ''
+    E.stillTag.style.display = s.still ? '' : 'none'
+    if (s.still) E.stillTag.textContent = s.still
+    E.cursor.style.display = s.cursor ? '' : 'none'
+    E.ring.style.display = (s.cursor && s.cursor.click != null) ? '' : 'none'
+  }
+  if (s.type === 'card') {
+    E.card.innerHTML = (s.badge ? `<div class="badge">${s.badge}</div>` : '')
+      + (s.h1 ? `<h1>${s.h1}</h1>` : '') + (s.h2 ? `<h2>${s.h2}</h2>` : '')
+      + (s.rule ? `<div class="rule"></div>` : '') + (s.body ? `<p>${s.body}</p>` : '')
+  }
+  if (s.type === 'evidence') {
+    E.ev.innerHTML = `<div class="evHead"><span class="evTag">${s.tag || 'Evidence'}</span>
+      <span class="evTitle">${s.title}</span></div><div class="evSub">${s.sub || ''}</div>
+      <table class="evt"><tbody>${s.rows.map((r)=>`<tr><td class="k">${r[0]}</td><td class="v">${r[1]}</td></tr>`).join('')}</tbody></table>`
+    evRows = [...E.ev.querySelectorAll('tr')]
+  }
+  E.kicker.textContent = s.kicker || ''
+  E.cap.innerHTML = s.cap || ''
+  E.lower.style.display = (s.kicker || s.cap) ? '' : 'none'
+  E.scrim.style.display = (isScreen && (s.kicker || s.cap)) ? '' : 'none'
+}
+
+window.drawAt = function (t) {
+  const { i, s, local } = sceneAt(t)
+  if (i !== curScene) applySceneStatics(i, s)
+
+  E.content.style.opacity = Math.min(easeOut(local / (s.fin ?? 0.5)), easeOut((s.dur - local) / (s.fout ?? 0.45)), 1).toFixed(4)
+
+  if (s.type === 'card') {
+    E.card.style.transform = `translateY(${lerp(22, 0, easeOut(local / 1.1)).toFixed(2)}px)`
+  } else if (s.type === 'evidence') {
+    for (let r = 0; r < evRows.length; r++) evRows[r].style.opacity = clamp01(easeOut((local - 0.75 - r * 0.28) / 0.6)).toFixed(3)
+  } else {
+    let z, px, py
+    if (s.view) {
+      const b = { x: kf(s.view.map(v=>({at:v.at,v:v.box.x})), local), y: kf(s.view.map(v=>({at:v.at,v:v.box.y})), local),
+                  w: kf(s.view.map(v=>({at:v.at,v:v.box.w})), local), h: kf(s.view.map(v=>({at:v.at,v:v.box.h})), local) }
+      const pad = kf(s.view.map(v=>({at:v.at,v:v.pad ?? 1})), local)
+      z = Math.max(1, Math.min(1920/Math.max(b.w*pad,200), 1080/Math.max(b.h*pad,120), 2.0))
+      px = b.x + b.w/2; py = b.y + b.h/2
+    } else { z = kf(s.zoom, local); px = kf(s.panX, local); py = kf(s.panY, local) }
+    const hw = 960/z, hh = 540/z
+    px = Math.max(hw, Math.min(1920-hw, px)); py = Math.max(hh, Math.min(1080-hh, py))
+
+    // width is set once per scene (K below); only the transform changes per frame
+    const tx = (VW/2) - px*K*z, ty = (VH/2) - py*K*z
+    E.plate.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) scale(${z.toFixed(5)})`
+    E.fw.style.transform = `translate(-50%,-50%) scale(${kf(s.frameScale || [{at:0,v:1}], local).toFixed(4)})`
+
+    if (s.cursor) {
+      const cx = kf(s.cursor.x, local), cy = kf(s.cursor.y, local)
+      E.cursor.style.transform = `translate(${cx.toFixed(1)}px, ${cy.toFixed(1)}px)`
+      if (s.cursor.click != null) {
+        const d = local - s.cursor.click
+        if (d >= 0 && d < 0.75) {
+          const u = d/0.75, r = 10 + 46*easeOut(u)
+          E.ring.style.opacity = (1-u).toFixed(3)
+          E.ring.style.width = E.ring.style.height = (2*r).toFixed(1) + 'px'
+          E.ring.style.transform = `translate(${(cx-r).toFixed(1)}px, ${(cy-r).toFixed(1)}px)`
+        } else E.ring.style.opacity = '0'
+      }
+    }
+  }
+
+  const a = Math.min(easeOut((local - (s.capIn ?? 0.35)) / 0.55), easeOut((s.dur - 0.45 - local) / 0.5), 1)
+  E.lower.style.opacity = clamp01(a).toFixed(3)
+  E.lower.style.transform = `translateY(${lerp(16, 0, easeOut((local - (s.capIn ?? 0.35)) / 0.7)).toFixed(2)}px)`
+}
+window.__TOTAL__ = T.scenes.reduce((a,s)=>a+s.dur, 0)
+drawAt(0)
+</script>
+</body>
+</html>
