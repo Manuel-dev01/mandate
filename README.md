@@ -8,6 +8,8 @@
 
 **SERV Hackathon Edition 01** · RWA Vaults (IXS) + Mainnet & MCP (Robinhood Chain)
 
+**[▶ Watch the 5-minute demo](https://www.youtube.com/watch?v=MqoRR2mEUaI)**
+
 **[Console](https://mandate-console-five.vercel.app)** · **[Telegram bot](https://t.me/mandaeteBot)** · **[Agent API](https://agent-production-d238.up.railway.app/health)** · **[ERC-8004 identity](https://www.8004scan.io/agents/base-sepolia/9316)**
 
 </div>
@@ -44,7 +46,7 @@ Preserve capital first. Never put more than 40% into a single vault, and no more
 |---|---|
 | **[The problem](#the-problem)** · **[What it does](#what-it-does)** · **[Why the refusal is the product](#why-the-refusal-is-the-product)** | The idea |
 | **[Architecture](#architecture)** → [full architecture doc](docs/ARCHITECTURE.md) | Trust boundaries, the decision pipeline, the three hashes, invariants |
-| [**Demo script**](docs/DEMO.md) | Shot-by-shot, with the voiceover, for the video |
+| [**The demo**](https://www.youtube.com/watch?v=MqoRR2mEUaI) · [script](docs/DEMO.md) | Five minutes, end to end — and the shot-by-shot script behind it |
 | [**The Mandate DSL**](docs/MANDATE_DSL.md) | The seven rule types, and how English maps onto them |
 | [**The receipt**](docs/RECEIPT.md) | Its shape, what each hash commits to, how to verify one yourself |
 | [**Revenue model**](docs/REVENUE.md) | Measured unit economics, pricing — and what is *not* proven |
