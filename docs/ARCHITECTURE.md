@@ -169,5 +169,4 @@ If a change breaks one of these, it is the wrong change.
 |---|---|
 | The seven rule types and how English maps to them | [`MANDATE_DSL.md`](MANDATE_DSL.md) |
 | The receipt's shape, its hashes, how to verify one | [`RECEIPT.md`](RECEIPT.md) |
-| Live-probe evidence behind every integration claim | [`RECON.md`](RECON.md) |
 | The business case and measured unit economics | [`REVENUE.md`](REVENUE.md) |

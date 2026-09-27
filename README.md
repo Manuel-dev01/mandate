@@ -48,7 +48,6 @@ Preserve capital first. Never put more than 40% into a single vault, and no more
 | [**The Mandate DSL**](docs/MANDATE_DSL.md) | The seven rule types, and how English maps onto them |
 | [**The receipt**](docs/RECEIPT.md) | Its shape, what each hash commits to, how to verify one yourself |
 | [**Revenue model**](docs/REVENUE.md) | Measured unit economics, pricing — and what is *not* proven |
-| [**Evidence**](docs/RECON.md) | The live-probe log behind every integration claim below |
 | **[Running it](#running-it-locally)** · **[Deployment](#deployment)** · **[Safety](#safety)** | Operating it |
 
 ---
@@ -200,7 +199,6 @@ Nothing is signed or broadcast on the product surface. Robinhood Chain mainnet i
 
 <div align="center">
 
-*Built 14–27 September 2026. Every integration claim above is backed by a live probe recorded in [`docs/RECON.md`](docs/RECON.md).*
-*Working notes, the build log and the recording checklist are in [`docs/internal/`](docs/internal/).*
+*Built 14–27 September 2026. Every integration constant above was confirmed by a live probe against the real service before it was relied on — never copied from upstream documentation.*
 
 </div>

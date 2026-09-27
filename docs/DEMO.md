@@ -3,7 +3,8 @@
 A complete shot-by-shot script for a ~3½ minute video: what is on screen, what you type, and what you say. It opens by introducing the product, then proves it.
 
 > Spoken lines are in **bold**. Stage directions are in *[brackets]*. Typed input is in code blocks.
-> Before recording, run the checklist in [`internal/DEMO_RUNBOOK.md`](internal/DEMO_RUNBOOK.md).
+> Before recording: confirm the bot is polling and alone, IXS is live rather than stale, the
+> facilitator is up and every console route is warm — `node scripts/preflight.mjs` checks all of it.
 
 **Setup:** two windows, Telegram and one browser. Notifications off, bookmarks bar hidden, browser at ~125%.
 
