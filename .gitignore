@@ -43,3 +43,9 @@ demo/*.mp4
 # is the source of truth; audio is regenerated or replaced with a human read.
 demo/studio/voice*/
 demo/*.wav
+
+# Working agreement and demo production assets: kept locally, not part of the
+# public repo. The video itself is distributed with the submission, not from git.
+/CLAUDE.md
+/AGENTS.md
+/demo/

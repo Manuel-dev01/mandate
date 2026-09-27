@@ -1,6 +1,6 @@
 # RECON — live-probe evidence
 
-All probes run **13 September 2026**. This file is the evidence behind the constants in `CLAUDE.md`. If something breaks, re-run these before assuming the code is at fault.
+All probes run **13 September 2026**. This file is the evidence behind every integration constant the build relies on. If something breaks, re-run these before assuming the code is at fault.
 
 ---
 
